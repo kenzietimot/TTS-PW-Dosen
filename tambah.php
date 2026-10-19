@@ -2,6 +2,14 @@
 require_once 'koneksi.php';
 
 $error = '';
+$kategori_menu = [
+    'Obat Bebas',
+    'Obat Bebas Terbatas',
+    'Obat Keras',
+    'Obat Herbal Terstandar',
+    'Obat Tradisional',
+    'Narkotika'
+];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
@@ -10,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $harga = filter_var($_POST['harga'], FILTER_VALIDATE_INT);
     $stok = filter_var($_POST['stok'], FILTER_VALIDATE_INT);
 
-    if ($nama == '' || $kategori == '' || $harga === false || $stok === false) {
+    if ($nama == '' || !in_array($kategori, $kategori_menu, true) || $harga === false || $stok === false) {
         $error = "Semua field wajib diisi dengan benar!";
     } elseif ($harga < 0 || $stok < 0) {
         $error = "Harga dan stok tidak boleh bernilai negatif!";
@@ -87,12 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <select name="kategori" class="form-select" required>
 
                         <option value="">-- Pilih Kategori --</option>
-                        <option value="Obat Keras">Obat Keras</option>
-                        <option value="Obat Bebas">Obat Bebas</option>
-                        <option value="Obat Bebas Terbatas">Obat Bebas Terbatas</option>
-                        <option value="Narkotika">Narkotika</option>
-                        <option value="Obat Herbal Terstandar">Obat Herbal Terstandar</option>
-                        <option value="Obat Tradisional">Obat Tradisional</option>
+                        <?php foreach ($kategori_menu as $kategori): ?>
+                            <option value="<?= htmlspecialchars($kategori, ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($kategori, ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
 
                     </select>
                 </div>
@@ -146,4 +151,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 </body>
 </html>
-

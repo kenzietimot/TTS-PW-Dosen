@@ -9,6 +9,14 @@ if (!$id) {
 }
 
 $error = "";
+$kategori_menu = [
+    'Obat Bebas',
+    'Obat Bebas Terbatas',
+    'Obat Keras',
+    'Obat Herbal Terstandar',
+    'Obat Tradisional',
+    'Narkotika'
+];
 
 $stmt = $conn->prepare("SELECT * FROM menu WHERE id = ?");
 $stmt->bind_param("i", $id);
@@ -28,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $harga = filter_var($_POST['harga'], FILTER_VALIDATE_INT);
     $stok = filter_var($_POST['stok'], FILTER_VALIDATE_INT);
 
-    if ($nama == "" || $kategori == "" || $harga === false || $stok === false) {
+    if ($nama == "" || !in_array($kategori, $kategori_menu, true) || $harga === false || $stok === false) {
         $error = "Semua field wajib diisi dengan benar!";
     } elseif ($harga < 0 || $stok < 0) {
         $error = "Harga dan stok tidak boleh negatif!";
@@ -92,14 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="mb-3">
                     <label class="form-label">Kategori</label>
                     <select name="kategori" class="form-select" required>
-                        <?php
-                        $kategori_menu = ['Kopi', 'Non-Kopi', 'Makanan', 'Cemilan'];
-
-                        foreach ($kategori_menu as $k) {
-                            $selected = ($data['kategori'] == $k) ? 'selected' : '';
-                            echo "<option value=\"$k\" $selected>$k</option>";
-                        }
-                        ?>
+                        <?php foreach ($kategori_menu as $kategori): ?>
+                            <option value="<?= htmlspecialchars($kategori, ENT_QUOTES, 'UTF-8'); ?>" <?= $data['kategori'] === $kategori ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars($kategori, ENT_QUOTES, 'UTF-8'); ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
 
@@ -140,4 +145,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 </body>
 </html>
-
