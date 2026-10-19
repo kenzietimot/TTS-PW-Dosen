@@ -1,0 +1,5 @@
+Anggota Kelompok 12
+1. Arga Wira Satriaji - 672025041
+jobdesk: pembuatan Index, Tambah, CSS
+2. Kenzie Sebastian Timothy - 672025046
+jobdesk: pembuatan Hapus, Setup, Edit

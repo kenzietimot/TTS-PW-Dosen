@@ -1,0 +1,92 @@
+:root {
+    --coffee-primary: #4a2c2a;    
+    --coffee-secondary: #8c6d58;  
+    --coffee-accent: #d4a373;     
+    --coffee-light: #fefae0;      
+    --coffee-dark: #23120f;       
+}
+
+body {
+    background-color: #f8f6f0 !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+}
+
+.navbar-coffee {
+    background-color: var(--coffee-dark) !important;
+    border-bottom: 3px solid var(--coffee-accent);
+}
+
+.navbar-coffee .navbar-brand {
+    color: var(--coffee-accent) !important;
+    font-size: 1.35rem;
+}
+
+.card {
+    border: none !important;
+    border-radius: 12px !important;
+    background-color: #ffffff;
+}
+
+.card-header-coffee {
+    background-color: var(--coffee-primary) !important;
+    color: #ffffff !important;
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.table-coffee-head {
+    background-color: var(--coffee-primary) !important;
+    color: #ffffff !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(212, 163, 115, 0.12) !important;
+}
+
+.badge-kopi {
+    background-color: #6f4e37 !important;
+    color: #fff;
+}
+.badge-nonkopi {
+    background-color: #2a9d8f !important;
+    color: #fff;
+}
+.badge-makanan {
+    background-color: #e76f51 !important;
+    color: #fff;
+}
+.badge-cemilan {
+    background-color: #e9c46a !important;
+    color: #212529;
+}
+
+.btn-coffee {
+    background-color: var(--coffee-primary) !important;
+    border-color: var(--coffee-primary) !important;
+    color: #ffffff !important;
+    transition: all 0.3s ease;
+}
+
+.btn-coffee:hover {
+    background-color: var(--coffee-dark) !important;
+    border-color: var(--coffee-dark) !important;
+    color: #ffffff !important;
+}
+
+.btn-coffee-accent {
+    background-color: var(--coffee-accent) !important;
+    border-color: var(--coffee-accent) !important;
+    color: #4a2c2a !important;
+    font-weight: 600;
+}
+
+.btn-coffee-accent:hover {
+    background-color: #c39262 !important;
+    color: #23120f !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--coffee-accent) !important;
+    box-shadow: 0 0 0 0.25rem rgba(212, 163, 115, 0.35) !important;
+}
