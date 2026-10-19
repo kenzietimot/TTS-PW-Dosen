@@ -2,7 +2,7 @@
 $host = "localhost";
 $user = "root";
 $pass = "";
-$db   = "db_kedai";
+$db   = "db_apotik";
 
 $conn = new mysqli($host, $user, $pass, $db);
 
