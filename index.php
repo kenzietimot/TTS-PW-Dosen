@@ -299,13 +299,26 @@ function renderCart() {
 
 document.querySelectorAll('.add-to-cart').forEach((button) => {
     button.addEventListener('click', () => {
-        const id = Number(button.dataset.id);
-        const item = cart.find((cartItem) => cartItem.id === id);
-        if (item) item.quantity += 1;
-        else cart.push({ id, name: button.dataset.name, price: Number(button.dataset.price), quantity: 1 });
-        saveCart();
-        button.innerHTML = '<i class="bi bi-check2"></i>';
-        window.setTimeout(() => { button.innerHTML = '<i class="bi bi-plus-lg"></i>'; }, 900);
+        Swal.fire({
+            title: 'Tambahkan ke keranjang?',
+            text: `${button.dataset.name} — Rp ${currency.format(Number(button.dataset.price))}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#267b58',
+            cancelButtonColor: '#718078',
+            confirmButtonText: 'Ya, tambahkan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            const id = Number(button.dataset.id);
+            const item = cart.find((cartItem) => cartItem.id === id);
+            if (item) item.quantity += 1;
+            else cart.push({ id, name: button.dataset.name, price: Number(button.dataset.price), quantity: 1 });
+            saveCart();
+            button.innerHTML = '<i class="bi bi-check2"></i>';
+            window.setTimeout(() => { button.innerHTML = '<i class="bi bi-plus-lg"></i>'; }, 900);
+        });
     });
 });
 
