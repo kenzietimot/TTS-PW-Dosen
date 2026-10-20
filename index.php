@@ -77,7 +77,7 @@ $statusMessages = [
         <div class="collapse navbar-collapse" id="mainNavigation">
             <ul class="navbar-nav mx-auto nav-links">
                 <li class="nav-item"><a class="nav-link" href="#produk">Produk</a></li>
-                <li class="nav-item"><a class="nav-link" href="#cara-belanja">Cara belanja</a></li>
+                <li class="nav-item"><a class="nav-link" href="#kelola-produk">Daftar Inventaris</a></li>
                 <li class="nav-item"><a class="nav-link" href="#kontak">Kontak</a></li>
             </ul>
             <div class="nav-actions">
