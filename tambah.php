@@ -478,11 +478,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
 <nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav">
     <div class="container">
         <a class="navbar-brand brand-mark" href="index.php">
-            <span class="brand-icon"><i class="bi bi-plus-lg"></i></span>
+            <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
             <span>sehat<span class="brand-highlight">mart</span><small>INVENTARIS APOTEK</small></span>
         </a>
         <a href="index.php" class="btn btn-outline-green">
-            <i class="bi bi-arrow-left me-1"></i> Kembali ke Katalog
+            <i class="bi bi-arrow-left me-1"></i> Kembali ke Inventaris
         </a>
     </div>
 </nav>
