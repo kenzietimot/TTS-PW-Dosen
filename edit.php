@@ -8,6 +8,7 @@ if (!$id) {
     exit();
 }
 
+// Kategori dan satuan sama dengan tambah.php agar input konsisten.
 $kategori_produk = [
     'Obat Bebas',
     'Obat Bebas Terbatas',
@@ -19,7 +20,6 @@ $kategori_produk = [
     'Cairan Medis',
     'Obat Herbal Terstandar',
     'Obat Tradisional',
-    'Narkotika',
     'Perawatan Pribadi'
 ];
 
@@ -29,39 +29,80 @@ $satuan_produk = [
 ];
 
 $error = '';
-$escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+$schemaError = '';
+$escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $textLength = static fn(string $value): int => function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 
-// Ambil data produk saat ini
-$stmt = $conn->prepare('SELECT * FROM menu WHERE id = ?');
-$stmt->bind_param('i', $id);
-$stmt->execute();
-$data = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+// Pastikan kolom tambahan tersedia (sama seperti tambah.php).
+$kolomTambahan = [
+    'merek' => "ALTER TABLE menu ADD COLUMN merek VARCHAR(100) NULL AFTER kategori",
+    'satuan' => "ALTER TABLE menu ADD COLUMN satuan VARCHAR(30) NOT NULL DEFAULT 'pcs' AFTER merek",
+    'harga_beli' => "ALTER TABLE menu ADD COLUMN harga_beli INT NOT NULL DEFAULT 0 AFTER satuan",
+    'stok_minimum' => "ALTER TABLE menu ADD COLUMN stok_minimum INT NOT NULL DEFAULT 5 AFTER stok",
+    'tanggal_kedaluwarsa' => "ALTER TABLE menu ADD COLUMN tanggal_kedaluwarsa DATE NULL AFTER stok_minimum",
+    'nomor_batch' => "ALTER TABLE menu ADD COLUMN nomor_batch VARCHAR(100) NULL AFTER tanggal_kedaluwarsa",
+    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER nomor_batch"
+];
 
-if (!$data) {
-    header('Location: index.php');
-    exit();
+foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
+    $kolomAman = $conn->real_escape_string($namaKolom);
+    $hasilCek = $conn->query("SHOW COLUMNS FROM menu LIKE '{$kolomAman}'");
+
+    if (!$hasilCek) {
+        $schemaError = 'Tidak dapat memeriksa struktur tabel menu. Pastikan database db_apotik dan tabel menu sudah dibuat melalui setup.php.';
+        break;
+    }
+
+    $sudahAda = $hasilCek->num_rows > 0;
+    $hasilCek->free();
+
+    if (!$sudahAda && !$conn->query($sqlTambahKolom)) {
+        $schemaError = 'Kolom tambahan belum dapat dibuat. Pastikan akun database memiliki izin ALTER TABLE. Detail: ' . $conn->error;
+        break;
+    }
+}
+
+// Ambil data produk.
+$data = null;
+if ($schemaError === '') {
+    $stmt = $conn->prepare('SELECT * FROM menu WHERE id = ?');
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $data = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$data) {
+        header('Location: index.php');
+        exit();
+    }
 }
 
 $form = [
-    'nama_menu' => $data['nama_menu'] ?? '',
-    'kategori' => $data['kategori'] ?? '',
-    'merek' => $data['merek'] ?? '',
-    'satuan' => $data['satuan'] ?? 'pcs',
+    'nama_menu' => (string) ($data['nama_menu'] ?? ''),
+    'kategori' => (string) ($data['kategori'] ?? ''),
+    'merek' => (string) ($data['merek'] ?? ''),
+    'satuan' => (string) ($data['satuan'] ?? 'pcs'),
     'harga_beli' => (string) ($data['harga_beli'] ?? '0'),
     'harga' => (string) ($data['harga'] ?? '0'),
     'stok' => (string) ($data['stok'] ?? '0'),
     'stok_minimum' => (string) ($data['stok_minimum'] ?? '5'),
-    'tanggal_kedaluwarsa' => $data['tanggal_kedaluwarsa'] ?? '',
-    'nomor_batch' => $data['nomor_batch'] ?? '',
-    'deskripsi' => $data['deskripsi'] ?? ''
+    'tanggal_kedaluwarsa' => (string) ($data['tanggal_kedaluwarsa'] ?? ''),
+    'nomor_batch' => (string) ($data['nomor_batch'] ?? ''),
+    'deskripsi' => (string) ($data['deskripsi'] ?? '')
 ];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    foreach ($form as $field => $defaultValue) {
-        $postedValue = $_POST[$field] ?? $defaultValue;
-        $form[$field] = is_string($postedValue) ? trim($postedValue) : (string) $defaultValue;
+// Jika kategori/satuan lama tidak ada di daftar, tetap tampilkan agar tidak hilang.
+if ($form['kategori'] !== '' && !in_array($form['kategori'], $kategori_produk, true)) {
+    $kategori_produk[] = $form['kategori'];
+}
+if ($form['satuan'] !== '' && !in_array($form['satuan'], $satuan_produk, true)) {
+    $satuan_produk[] = $form['satuan'];
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
+    foreach ($form as $field => $currentValue) {
+        $postedValue = $_POST[$field] ?? $currentValue;
+        $form[$field] = is_string($postedValue) ? trim($postedValue) : $currentValue;
     }
 
     $nama = $form['nama_menu'];
@@ -120,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             if (!$stmt) {
-                throw new RuntimeException('Query update tidak dapat disiapkan.');
+                throw new RuntimeException('Query tidak dapat disiapkan.');
             }
 
             $stmt->bind_param(
@@ -138,7 +179,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $deskripsiDb,
                 $id
             );
-
             $stmt->execute();
             $stmt->close();
 
@@ -146,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         } catch (Throwable $exception) {
             error_log($exception->getMessage());
-            $error = 'Gagal memperbarui data inventaris. Pastikan kolom database lengkap dan data valid.';
+            $error = 'Produk gagal diperbarui. Pastikan struktur tabel menu sudah siap dan data yang dimasukkan valid.';
         }
     }
 }
@@ -157,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f6faf7">
-    <title>Edit Inventaris — SehatMart</title>
+    <title>Edit Produk - SehatMart</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -166,38 +206,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <nav class="navbar navbar-expand-lg navbar-light pharmacy-nav">
     <div class="container">
         <a class="navbar-brand brand-mark" href="index.php">
-            <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
+            <span class="brand-icon"><i class="bi bi-plus-lg"></i></span>
             <span>sehat<span class="brand-highlight">mart</span><small>INVENTARIS APOTEK</small></span>
         </a>
-        <a href="index.php" class="btn btn-outline-green"><i class="bi bi-arrow-left me-1"></i> Kembali ke Inventaris</a>
+        <a href="index.php" class="btn btn-outline-green"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
     </div>
 </nav>
 
 <main class="container py-4 py-lg-5" style="max-width: 1000px;">
     <div class="mb-4">
-        <span class="eyebrow">PENGELOLAAN STOK</span>
-        <h1 class="h2 fw-bold mt-2 mb-2">Edit Data Produk Inventaris</h1>
-        <p class="text-secondary mb-0">Perbarui spesifikasi item, lokasi batch, batas minimum stok, dan harga inventaris.</p>
+        <span class="eyebrow">PENGELOLAAN INVENTARIS</span>
+        <h1 class="h2 fw-bold mt-2 mb-2">Edit produk apotek</h1>
+        <p class="text-secondary mb-0">Perbarui informasi, harga, stok, serta data batch dan kedaluwarsa produk.</p>
     </div>
 
+    <?php if ($schemaError !== ''): ?>
+        <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><?= $escape($schemaError); ?></div>
+    <?php endif; ?>
     <?php if ($error !== ''): ?>
         <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle me-2"></i><?= $escape($error); ?></div>
     <?php endif; ?>
 
-    <form method="POST" action="edit.php?id=<?= $id; ?>" class="card border-0 shadow-sm">
+    <form method="POST" action="edit.php?id=<?= (int) $id; ?>" class="card border-0 shadow-sm">
         <div class="card-body p-3 p-md-4">
-            <h2 class="h5 fw-bold mb-3"><i class="bi bi-capsule text-success me-2"></i>Informasi Produk</h2>
+            <h2 class="h5 fw-bold mb-3"><i class="bi bi-box-seam text-success me-2"></i>Informasi produk</h2>
             <div class="row g-3">
                 <div class="col-md-8">
-                    <label for="nama_menu" class="form-label">Nama Produk / Obat <span class="text-danger">*</span></label>
-                    <input id="nama_menu" name="nama_menu" type="text" class="form-control" maxlength="100" value="<?= $escape($form['nama_menu']); ?>" required>
+                    <label for="nama_menu" class="form-label">Nama produk <span class="text-danger">*</span></label>
+                    <input id="nama_menu" name="nama_menu" type="text" class="form-control" maxlength="100" value="<?= $escape($form['nama_menu']); ?>" placeholder="Contoh: Perban gulung 5 cm" required>
                 </div>
                 <div class="col-md-4">
-                    <label for="merek" class="form-label">Merek / Pabrik / Produsen</label>
-                    <input id="merek" name="merek" type="text" class="form-control" maxlength="100" value="<?= $escape($form['merek']); ?>" placeholder="Contoh: Kimia Farma, Sanbe">
+                    <label for="merek" class="form-label">Merek</label>
+                    <input id="merek" name="merek" type="text" class="form-control" maxlength="100" value="<?= $escape($form['merek']); ?>" placeholder="Contoh: Betadine">
                 </div>
                 <div class="col-md-6">
-                    <label for="kategori" class="form-label">Kategori Farmasi <span class="text-danger">*</span></label>
+                    <label for="kategori" class="form-label">Kategori <span class="text-danger">*</span></label>
                     <select id="kategori" name="kategori" class="form-select" required>
                         <option value="">-- Pilih kategori --</option>
                         <?php foreach ($kategori_produk as $kategoriPilihan): ?>
@@ -206,67 +249,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label for="satuan" class="form-label">Satuan Stok Kemasan <span class="text-danger">*</span></label>
+                    <label for="satuan" class="form-label">Satuan stok <span class="text-danger">*</span></label>
                     <select id="satuan" name="satuan" class="form-select" required>
                         <?php foreach ($satuan_produk as $satuanPilihan): ?>
                             <option value="<?= $escape($satuanPilihan); ?>" <?= $form['satuan'] === $satuanPilihan ? 'selected' : ''; ?>><?= $escape(ucfirst($satuanPilihan)); ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="form-text">Bentuk fisik kemasan (misal: strip, botol, tube, box, dll).</div>
+                    <div class="form-text">Contoh: strip, botol, tube, roll, atau pcs.</div>
                 </div>
                 <div class="col-12">
-                    <label for="deskripsi" class="form-label">Deskripsi / Catatan Penyimpanan</label>
-                    <textarea id="deskripsi" name="deskripsi" class="form-control" rows="3" maxlength="2000" placeholder="Catatan dosis, lokasi rak penyimpanan (misal: Rak A-2), atau indikasi medis."><?= $escape($form['deskripsi']); ?></textarea>
+                    <label for="deskripsi" class="form-label">Deskripsi / catatan produk</label>
+                    <textarea id="deskripsi" name="deskripsi" class="form-control" rows="3" maxlength="2000" placeholder="Contoh: ukuran kemasan, isi produk, atau catatan inventaris."><?= $escape($form['deskripsi']); ?></textarea>
                     <div class="form-text">Maksimal 2.000 karakter.</div>
                 </div>
             </div>
 
             <hr class="my-4">
-            <h2 class="h5 fw-bold mb-3"><i class="bi bi-calculator text-success me-2"></i>Harga & Level Stok</h2>
+            <h2 class="h5 fw-bold mb-3"><i class="bi bi-cash-coin text-success me-2"></i>Harga dan stok</h2>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label for="harga_beli" class="form-label">Harga Beli / HPP (Rp) <span class="text-danger">*</span></label>
+                    <label for="harga_beli" class="form-label">Harga beli per satuan (Rp) <span class="text-danger">*</span></label>
                     <input id="harga_beli" name="harga_beli" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['harga_beli']); ?>" required>
-                    <div class="form-text">Harga perolehan barang dari distributor.</div>
                 </div>
                 <div class="col-md-6">
-                    <label for="harga" class="form-label">Harga Jual Satuan (Rp) <span class="text-danger">*</span></label>
+                    <label for="harga" class="form-label">Harga jual per satuan (Rp) <span class="text-danger">*</span></label>
                     <input id="harga" name="harga" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['harga']); ?>" required>
-                    <div class="form-text">Nilai acuan penjualan / tarif per unit.</div>
                 </div>
                 <div class="col-md-6">
-                    <label for="stok" class="form-label">Jumlah Stok Fisik <span class="text-danger">*</span></label>
+                    <label for="stok" class="form-label">Stok saat ini <span class="text-danger">*</span></label>
                     <input id="stok" name="stok" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['stok']); ?>" required>
-                    <div class="form-text">Jumlah unit riil yang ada di gudang / etalase apotek.</div>
                 </div>
                 <div class="col-md-6">
-                    <label for="stok_minimum" class="form-label">Batas Minimum Stok (Reorder Point) <span class="text-danger">*</span></label>
+                    <label for="stok_minimum" class="form-label">Batas stok minimum <span class="text-danger">*</span></label>
                     <input id="stok_minimum" name="stok_minimum" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['stok_minimum']); ?>" required>
-                    <div class="form-text">Peringatan otomatis muncul bila stok &le; angka ini.</div>
+                    <div class="form-text">Sebagai acuan saat stok mulai menipis.</div>
                 </div>
             </div>
 
             <hr class="my-4">
-            <h2 class="h5 fw-bold mb-3"><i class="bi bi-upc-scan text-success me-2"></i>Nomor Batch & Masa Kedaluwarsa</h2>
+            <h2 class="h5 fw-bold mb-3"><i class="bi bi-upc-scan text-success me-2"></i>Batch dan kedaluwarsa</h2>
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label for="nomor_batch" class="form-label">Nomor Batch / Lot</label>
-                    <input id="nomor_batch" name="nomor_batch" type="text" class="form-control" maxlength="100" value="<?= $escape($form['nomor_batch']); ?>" placeholder="Contoh: BTC-PCM-2024A">
+                    <label for="nomor_batch" class="form-label">Nomor batch</label>
+                    <input id="nomor_batch" name="nomor_batch" type="text" class="form-control" maxlength="100" value="<?= $escape($form['nomor_batch']); ?>" placeholder="Contoh: BATCH-001">
                 </div>
                 <div class="col-md-6">
-                    <label for="tanggal_kedaluwarsa" class="form-label">Tanggal Kedaluwarsa (Expired Date)</label>
+                    <label for="tanggal_kedaluwarsa" class="form-label">Tanggal kedaluwarsa</label>
                     <input id="tanggal_kedaluwarsa" name="tanggal_kedaluwarsa" type="date" class="form-control" value="<?= $escape($form['tanggal_kedaluwarsa']); ?>">
-                    <div class="form-text">Boleh dikosongkan jika alkes non-kedaluwarsa.</div>
+                    <div class="form-text">Boleh dikosongkan jika produk tidak memiliki tanggal kedaluwarsa.</div>
                 </div>
             </div>
 
-            <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4 pt-2">
+            <div class="d-flex flex-column flex-sm-row justify-content-between gap-2 mt-4">
                 <a href="index.php" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Batal</a>
-                <button type="submit" class="btn btn-primary-green"><i class="bi bi-check2-circle me-1"></i> Simpan Perubahan</button>
+                <button type="submit" class="btn btn-primary-green" <?= $schemaError !== '' ? 'disabled' : ''; ?>><i class="bi bi-check2-circle me-1"></i> Simpan perubahan</button>
             </div>
         </div>
     </form>
-    <p class="small text-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Field bertanda * wajib diisi. Perubahan langsung terupdate di rekap inventaris.</p>
+    <p class="small text-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Field bertanda * wajib diisi. Informasi batch dan kedaluwarsa bersifat opsional.</p>
 </main>
 </body>
 </html>
