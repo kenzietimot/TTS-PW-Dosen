@@ -8,7 +8,6 @@ if (!$id) {
     exit();
 }
 
-// Kategori dan satuan sama dengan tambah.php agar input konsisten.
 $kategori_produk = [
     'Obat Bebas',
     'Obat Bebas Terbatas',
