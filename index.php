@@ -77,6 +77,7 @@ $statusMessages = [
         <div class="collapse navbar-collapse" id="mainNavigation">
             <ul class="navbar-nav mx-auto nav-links">
                 <li class="nav-item"><a class="nav-link" href="#produk">Produk</a></li>
+                <li class="nav-item"><a class="nav-link" href="#cara-belanja">Keamanan obat</a></li>
                 <li class="nav-item"><a class="nav-link" href="#kelola-produk">Daftar Inventaris</a></li>
                 <li class="nav-item"><a class="nav-link" href="#kontak">Kontak</a></li>
             </ul>
@@ -181,10 +182,59 @@ $statusMessages = [
     </section>
 
     <section class="safety-section section-space" id="cara-belanja">
-        <div class="container safety-card">
-            <div class="safety-icon"><i class="bi bi-prescription2"></i></div>
-            <div><span class="eyebrow">BELANJA DENGAN BIJAK</span><h2>Kesehatanmu, prioritas kami.</h2><p>Periksa kemasan, tanggal kedaluwarsa, dan aturan pakai sebelum menggunakan obat. Untuk obat resep, ikuti petunjuk dokter atau apoteker.</p></div>
-            <a href="#kontak" class="btn btn-light-green">Info selengkapnya <i class="bi bi-arrow-right"></i></a>
+        <div class="container">
+            <div class="safety-heading">
+                <span class="eyebrow">PANDUAN KEAMANAN OBAT</span>
+                <h2>Gunakan obat dengan aman dan bijak.</h2>
+                <p>Informasi umum ini tidak menggantikan saran dokter atau apoteker. Selalu utamakan label kemasan dan petunjuk tenaga kesehatan.</p>
+            </div>
+            <div class="safety-grid">
+                <article class="safety-card">
+                    <span class="safety-icon"><i class="bi bi-search-heart"></i></span>
+                    <div>
+                        <h3>Sebelum menggunakan</h3>
+                        <ul>
+                            <li>Pastikan nama obat, kemasan, dan tanggal kedaluwarsa terbaca serta dalam kondisi baik.</li>
+                            <li>Baca aturan pakai dan peringatan pada label. Obat resep hanya digunakan oleh orang yang mendapat resep.</li>
+                            <li>Tanyakan kepada dokter atau apoteker bila memiliki alergi, penyakit tertentu, sedang hamil atau menyusui, atau menggunakan obat dan suplemen lain.</li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="safety-card">
+                    <span class="safety-icon"><i class="bi bi-capsule"></i></span>
+                    <div>
+                        <h3>Saat menggunakan</h3>
+                        <ul>
+                            <li>Ikuti dosis, waktu, dan lama penggunaan sesuai label atau petunjuk dokter/apoteker.</li>
+                            <li>Jangan berbagi obat, mengubah dosis, menghentikan obat resep, atau menggandakan dosis yang terlewat tanpa arahan tenaga kesehatan.</li>
+                            <li>Jangan mencampur obat dengan alkohol atau obat lain sebelum memastikan keamanannya. Jangan membelah atau menghancurkan tablet kecuali diizinkan apoteker.</li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="safety-card">
+                    <span class="safety-icon"><i class="bi bi-house-check"></i></span>
+                    <div>
+                        <h3>Simpan dengan benar</h3>
+                        <ul>
+                            <li>Simpan dalam kemasan aslinya dan ikuti petunjuk suhu penyimpanan pada label.</li>
+                            <li>Jauhkan dari jangkauan anak-anak, panas, dan kelembapan. Jangan gunakan obat yang kedaluwarsa atau kemasannya rusak.</li>
+                            <li>Tanyakan kepada apoteker atau fasilitas kesehatan tentang cara membuang obat yang sudah tidak digunakan.</li>
+                        </ul>
+                    </div>
+                </article>
+                <article class="safety-card safety-card-alert">
+                    <span class="safety-icon"><i class="bi bi-exclamation-triangle"></i></span>
+                    <div>
+                        <h3>Kenali reaksi dan kondisi darurat</h3>
+                        <ul>
+                            <li>Jika muncul keluhan yang tidak biasa setelah minum obat, segera hubungi dokter atau apoteker untuk mendapat arahan.</li>
+                            <li>Kesulitan bernapas, pembengkakan wajah atau tenggorokan, maupun pingsan memerlukan pertolongan darurat segera.</li>
+                            <li>Jika terjadi dugaan overdosis atau anak tidak sengaja menelan obat, segera cari pertolongan medis. Jangan memicu muntah; bawa kemasan obat bila memungkinkan.</li>
+                        </ul>
+                    </div>
+                </article>
+            </div>
+            <p class="safety-disclaimer"><i class="bi bi-info-circle"></i> Jangan menunda pertolongan darurat untuk mencari saran melalui chat atau situs web.</p>
         </div>
     </section>
 
