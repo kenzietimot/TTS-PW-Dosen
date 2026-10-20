@@ -1,56 +1,134 @@
 <?php
 require_once 'koneksi.php';
 
-$searchInput = $_GET['search'] ?? '';
-$categoryInput = $_GET['kategori'] ?? '';
-$statusInput = $_GET['status'] ?? '';
-$search = is_string($searchInput) ? trim($searchInput) : '';
-$kategori = is_string($categoryInput) ? trim($categoryInput) : '';
-$status = is_string($statusInput) ? $statusInput : '';
+// Cek dan tangkap input filter
+$searchInput   = $_GET['search'] ?? '';
+$categoryInput  = $_GET['kategori'] ?? '';
+$statusInput    = $_GET['status_stok'] ?? 'semua';
+$sortInput      = $_GET['sort'] ?? 'terbaru';
+$alertStatus    = $_GET['status'] ?? '';
+
+$search      = is_string($searchInput) ? trim($searchInput) : '';
+$kategori    = is_string($categoryInput) ? trim($categoryInput) : '';
+$statusStok  = is_string($statusInput) ? trim($statusInput) : 'semua';
+$sort        = is_string($sortInput) ? trim($sortInput) : 'terbaru';
+
 $allowedCategories = [
     'Obat Bebas',
     'Obat Bebas Terbatas',
     'Obat Keras',
+    'Vitamin dan Suplemen',
+    'Alat Kesehatan',
+    'Perawatan Luka',
+    'Antiseptik dan Disinfektan',
+    'Cairan Medis',
     'Obat Herbal Terstandar',
     'Obat Tradisional',
-    'Narkotika'
+    'Narkotika',
+    'Perawatan Pribadi'
 ];
 
+$allowedStatus = ['semua', 'aman', 'menipis', 'habis', 'kedaluwarsa', 'segera_kedaluwarsa'];
+if (!in_array($statusStok, $allowedStatus, true)) {
+    $statusStok = 'semua';
+}
+
+if ($kategori !== '' && !in_array($kategori, $allowedCategories, true)) {
+    $kategori = '';
+}
+
+// 1. Ambil Ringkasan Metrik Inventaris (KPI Keseluruhan)
+$summaryQuery = "SELECT 
+    COUNT(*) AS total_sku,
+    COALESCE(SUM(stok), 0) AS total_unit,
+    COALESCE(SUM(CASE WHEN stok > 0 AND stok <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
+    COALESCE(SUM(CASE WHEN stok = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
+    COALESCE(SUM(CASE WHEN tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END), 0) AS total_exp_alert,
+    COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * stok ELSE harga * stok END), 0) AS total_nilai_aset
+FROM menu";
+
+$summaryResult = $conn->query($summaryQuery);
+$kpi = $summaryResult ? $summaryResult->fetch_assoc() : [
+    'total_sku' => 0,
+    'total_unit' => 0,
+    'total_menipis' => 0,
+    'total_habis' => 0,
+    'total_exp_alert' => 0,
+    'total_nilai_aset' => 0
+];
+
+// 2. Susun Query Filter Inventaris
 $sql = "SELECT * FROM menu WHERE 1=1";
 $params = [];
 $types = '';
 
 if ($search !== '') {
-    $sql .= " AND nama_menu LIKE ?";
-    $params[] = '%' . $search . '%';
-    $types .= 's';
+    $sql .= " AND (nama_menu LIKE ? OR merek LIKE ? OR nomor_batch LIKE ?)";
+    $searchWildcard = '%' . $search . '%';
+    $params[] = $searchWildcard;
+    $params[] = $searchWildcard;
+    $params[] = $searchWildcard;
+    $types .= 'sss';
 }
 
-if ($kategori !== '' && in_array($kategori, $allowedCategories, true)) {
+if ($kategori !== '') {
     $sql .= " AND kategori = ?";
     $params[] = $kategori;
     $types .= 's';
-} else {
-    $kategori = '';
 }
 
-$sql .= ' ORDER BY id DESC';
-$stmt = $conn->prepare($sql);
+if ($statusStok === 'menipis') {
+    $sql .= " AND (stok > 0 AND stok <= stok_minimum)";
+} elseif ($statusStok === 'habis') {
+    $sql .= " AND stok = 0";
+} elseif ($statusStok === 'aman') {
+    $sql .= " AND stok > stok_minimum";
+} elseif ($statusStok === 'kedaluwarsa') {
+    $sql .= " AND tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa < CURDATE()";
+} elseif ($statusStok === 'segera_kedaluwarsa') {
+    $sql .= " AND tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 90 DAY)";
+}
 
+switch ($sort) {
+    case 'nama_asc':
+        $sql .= " ORDER BY nama_menu ASC";
+        break;
+    case 'stok_asc':
+        $sql .= " ORDER BY stok ASC, id DESC";
+        break;
+    case 'stok_desc':
+        $sql .= " ORDER BY stok DESC, id DESC";
+        break;
+    case 'exp_asc':
+        $sql .= " ORDER BY (tanggal_kedaluwarsa IS NULL), tanggal_kedaluwarsa ASC";
+        break;
+    case 'harga_desc':
+        $sql .= " ORDER BY harga DESC";
+        break;
+    case 'terbaru':
+    default:
+        $sql .= " ORDER BY id DESC";
+        break;
+}
+
+$stmt = $conn->prepare($sql);
 if ($params) {
     $stmt->bind_param($types, ...$params);
 }
-
 $stmt->execute();
 $result = $stmt->get_result();
-$products = $result->fetch_all(MYSQLI_ASSOC);
+$items = $result->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
-$escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+
 $statusMessages = [
-    'add_success' => 'Produk berhasil ditambahkan.',
-    'edit_success' => 'Produk berhasil diperbarui.',
-    'delete_success' => 'Produk berhasil dihapus.'
+    'add_success' => 'Produk inventaris baru berhasil ditambahkan.',
+    'edit_success' => 'Data inventaris berhasil diperbarui.',
+    'delete_success' => 'Item produk berhasil dihapus dari sistem inventaris.'
 ];
+
+$today = new DateTimeImmutable('today');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -58,369 +136,531 @@ $statusMessages = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f6faf7">
-    <title>SehatMart — Apotek Online</title>
+    <title>Sistem Penataan & Inventaris Apotek — SehatMart</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav">
+
+<!-- Header Khusus Cetak Dokumen Resmi -->
+<div class="print-only-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0 fw-bold">APOTEK SEHATMART</h2>
+            <p class="mb-0 text-muted small">Laporan Penataan & Status Inventaris Gudang Farmasi</p>
+        </div>
+        <div class="text-end small">
+            <div>Tanggal Cetak: <strong><?= date('d/m/Y H:i'); ?></strong></div>
+            <div>Penanggung Jawab: Apoteker Pengelola Apotek (APA)</div>
+        </div>
+    </div>
+</div>
+
+<nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav no-print">
     <div class="container">
         <a class="navbar-brand brand-mark" href="index.php">
-            <span class="brand-icon"><i class="bi bi-plus-lg"></i></span>
-            <span>sehat<span class="brand-highlight">mart</span><small>APOTEK ONLINE</small></span>
+            <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
+            <span>sehat<span class="brand-highlight">mart</span><small>SISTEM INVENTARIS APOTEK</small></span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Buka navigasi">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="mainNavigation">
             <ul class="navbar-nav mx-auto nav-links">
-                <li class="nav-item"><a class="nav-link" href="#produk">Produk</a></li>
-                <li class="nav-item"><a class="nav-link" href="#cara-belanja">Keamanan obat</a></li>
-                <li class="nav-item"><a class="nav-link" href="#kelola-produk">Daftar Inventaris</a></li>
-                <li class="nav-item"><a class="nav-link" href="#kontak">Kontak</a></li>
+                <li class="nav-item"><a class="nav-link active" href="#ringkasan"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="#tabel-inventaris"><i class="bi bi-table me-1"></i> Data Stok</a></li>
+                <li class="nav-item"><a class="nav-link" href="index.php?status_stok=menipis#tabel-inventaris"><i class="bi bi-exclamation-triangle me-1"></i> Stok Menipis</a></li>
+                <li class="nav-item"><a class="nav-link" href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris"><i class="bi bi-calendar-event me-1"></i> Cek Kedaluwarsa</a></li>
             </ul>
             <div class="nav-actions">
-                <button class="icon-button" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal" aria-label="Pengaturan"><i class="bi bi-sliders"></i></button>
-                <button class="icon-button cart-button" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartPanel" aria-label="Buka keranjang">
-                    <i class="bi bi-bag"></i><span class="cart-count" id="cartCount">0</span>
+                <button class="icon-button" type="button" onclick="window.print()" title="Cetak Rekap Inventaris" aria-label="Cetak rekap inventaris">
+                    <i class="bi bi-printer"></i>
                 </button>
-                <button class="account-button" type="button" data-bs-toggle="modal" data-bs-target="#accountModal"><i class="bi bi-person-circle"></i><span id="accountLabel">Akun</span></button>
+                <button class="icon-button" type="button" id="themeToggleBtn" title="Ganti Tema Tampilan" aria-label="Ganti tema tampilan">
+                    <i class="bi bi-moon-stars" id="themeIcon"></i>
+                </button>
+                <a href="tambah.php" class="btn btn-primary-green">
+                    <i class="bi bi-plus-lg"></i> Tambah Item
+                </a>
             </div>
         </div>
     </div>
 </nav>
 
 <main>
-    <section class="hero-section">
-        <div class="container hero-content">
-            <div class="hero-copy">
-                <span class="eyebrow"><i class="bi bi-patch-check-fill"></i> Teman sehat setiap hari</span>
-                <h1>Sehat dimulai dari <span>pilihan yang tepat.</span></h1>
-                <p>Temukan kebutuhan kesehatan harianmu dengan mudah. Pilih produk, cek informasi, dan belanja dari rumah.</p>
-                <a class="btn btn-primary-green" href="#produk">Jelajahi produk <i class="bi bi-arrow-down-right"></i></a>
-                <div class="hero-note"><i class="bi bi-shield-check"></i> Gunakan obat sesuai aturan pakai. Konsultasikan obat resep dengan apoteker.</div>
-            </div>
-            <div class="hero-art" aria-hidden="true">
-                <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
-                <div class="art-plus plus-one">+</div><div class="art-plus plus-two">+</div>
-                <div class="medicine-bottle"><div class="bottle-cap"></div><div class="bottle-label"><span>daily</span><strong>CARE</strong><i class="bi bi-heart-pulse-fill"></i></div></div>
-                <div class="floating-pill pill-one"></div><div class="floating-pill pill-two"></div>
-                <div class="hero-sticker"><i class="bi bi-heart-pulse"></i><span>Rawat diri,<br>mulai hari ini</span></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="trust-strip" aria-label="Informasi layanan">
-        <div class="container trust-items">
-            <div><span class="trust-icon"><i class="bi bi-capsule"></i></span><span><strong>Pilihan produk</strong><small>Kebutuhan kesehatan harian</small></span></div>
-            <div><span class="trust-icon"><i class="bi bi-search-heart"></i></span><span><strong>Cari dengan mudah</strong><small>Temukan produk yang dibutuhkan</small></span></div>
-            <div><span class="trust-icon"><i class="bi bi-chat-heart"></i></span><span><strong>Utamakan keamanan</strong><small>Baca label dan aturan pakai</small></span></div>
-        </div>
-    </section>
-
-    <section class="catalog-section section-space" id="produk">
+    <!-- Executive Operations Summary -->
+    <section class="inventory-hero" id="ringkasan">
         <div class="container">
-            <div class="section-heading">
-                <div><span class="eyebrow">PILIHAN UNTUKMU</span><h2>Produk kesehatan</h2><p>Jelajahi pilihan produk atau cari yang sedang kamu butuhkan.</p></div>
-                <a href="tambah.php" class="btn btn-outline-green admin-add"><i class="bi bi-plus-lg"></i> Tambah produk</a>
-            </div>
-
-            <form method="GET" action="index.php#produk" class="search-panel" role="search">
-                <label class="visually-hidden" for="searchInput">Cari nama obat atau produk</label>
-                <i class="bi bi-search search-icon"></i>
-                <input id="searchInput" type="search" name="search" placeholder="Cari nama obat atau produk..." value="<?= $escape($search); ?>">
-                <label class="visually-hidden" for="categorySelect">Pilih kategori</label>
-                <select id="categorySelect" name="kategori">
-                    <option value="">Semua kategori</option>
-                    <?php foreach ($allowedCategories as $category): ?>
-                        <option value="<?= $escape($category); ?>" <?= $kategori === $category ? 'selected' : ''; ?>><?= $escape($category); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="submit" class="btn btn-primary-green">Cari produk</button>
-                <?php if ($search !== '' || $kategori !== ''): ?>
-                    <a class="clear-search" href="index.php#produk" aria-label="Hapus pencarian"><i class="bi bi-x-lg"></i></a>
-                <?php endif; ?>
-            </form>
-
-            <div class="catalog-meta">
-                <span><?= $search !== '' || $kategori !== '' ? 'Hasil pencarian' : 'Produk pilihan' ?> <strong><?= count($products); ?></strong></span>
-                <span><i class="bi bi-info-circle"></i> Harga dan stok dapat berubah</span>
-            </div>
-
-            <?php if ($products): ?>
-                <div class="product-grid">
-                    <?php foreach (array_slice($products, 0, 8) as $product): ?>
-                        <article class="product-card">
-                            <div class="product-visual">
-                                <span class="product-category"><?= $escape($product['kategori']); ?></span>
-                                <div class="product-symbol"><i class="bi bi-capsule"></i></div>
-                                <span class="product-stock <?= (int) $product['stok'] > 0 ? '' : 'out-of-stock'; ?>">
-                                    <?= (int) $product['stok'] > 0 ? 'Tersedia' : 'Stok habis'; ?>
-                                </span>
-                            </div>
-                            <div class="product-info">
-                                <h3><?= $escape($product['nama_menu']); ?></h3>
-                                <p><?= (int) $product['stok'] > 0 ? 'Produk kesehatan pilihan untuk kebutuhanmu.' : 'Produk sedang tidak tersedia.'; ?></p>
-                                <div class="product-buy">
-                                    <strong>Rp <?= number_format((int) $product['harga'], 0, ',', '.'); ?></strong>
-                                    <button class="add-to-cart" type="button" aria-label="Tambah <?= $escape($product['nama_menu']); ?> ke keranjang" data-id="<?= (int) $product['id']; ?>" data-name="<?= $escape($product['nama_menu']); ?>" data-price="<?= (int) $product['harga']; ?>" <?= (int) $product['stok'] <= 0 ? 'disabled' : ''; ?>><i class="bi bi-plus-lg"></i></button>
-                                </div>
-                            </div>
-                        </article>
-                    <?php endforeach; ?>
+            <div class="hero-title-area">
+                <div>
+                    <span class="eyebrow"><i class="bi bi-clipboard2-pulse"></i> Manajemen Logistik & Tata Kelola Obat</span>
+                    <h1>Penataan Inventaris Apotek</h1>
+                    <p>Monitoring stok fisik, masa kedaluwarsa batch obat, batas minimum pemesanan kembali (reorder point), dan valuasi aset farmasi secara real-time.</p>
                 </div>
-            <?php else: ?>
-                <div class="empty-state"><span><i class="bi bi-search"></i></span><h3>Produk belum ditemukan</h3><p>Coba kata kunci lain atau hapus filter pencarian.</p><a href="index.php#produk" class="btn btn-outline-green">Lihat semua produk</a></div>
-            <?php endif; ?>
+                <div class="hero-actions no-print">
+                    <button type="button" class="btn btn-outline-green" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Cetak Lembar Inventaris
+                    </button>
+                    <a href="tambah.php" class="btn btn-primary-green">
+                        <i class="bi bi-plus-circle me-1"></i> Catat Barang Masuk
+                    </a>
+                </div>
+            </div>
 
-            <?php if (count($products) > 8): ?>
-                <p class="more-products">Menampilkan 8 dari <?= count($products); ?> hasil. Gunakan pencarian untuk menemukan produk lainnya.</p>
-            <?php endif; ?>
+            <!-- KPI Metric Cards Grid -->
+            <div class="kpi-grid">
+                <a href="index.php?status_stok=semua#tabel-inventaris" class="kpi-card <?= $statusStok === 'semua' && $search === '' && $kategori === '' ? 'active' : ''; ?>">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total SKU Obat</span>
+                        <span class="kpi-icon icon-green"><i class="bi bi-capsule"></i></span>
+                    </div>
+                    <div class="kpi-value"><?= number_format((int) $kpi['total_sku'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint"><i class="bi bi-check2-circle text-success"></i> Varian produk aktif</div>
+                </a>
+
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total Fisik Stok</span>
+                        <span class="kpi-icon icon-blue"><i class="bi bi-boxes"></i></span>
+                    </div>
+                    <div class="kpi-value"><?= number_format((int) $kpi['total_unit'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint"><i class="bi bi-archive text-info"></i> Seluruh unit di gudang</div>
+                </div>
+
+                <a href="index.php?status_stok=menipis#tabel-inventaris" class="kpi-card <?= $statusStok === 'menipis' ? 'active' : ''; ?>">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Stok Menipis</span>
+                        <span class="kpi-icon icon-amber"><i class="bi bi-exclamation-triangle"></i></span>
+                    </div>
+                    <div class="kpi-value text-warning"><?= number_format((int) $kpi['total_menipis'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint text-warning"><i class="bi bi-arrow-down-right"></i> &le; Batas minimum</div>
+                </a>
+
+                <a href="index.php?status_stok=habis#tabel-inventaris" class="kpi-card <?= $statusStok === 'habis' ? 'active' : ''; ?>">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Stok Habis</span>
+                        <span class="kpi-icon icon-coral"><i class="bi bi-x-octagon"></i></span>
+                    </div>
+                    <div class="kpi-value text-danger"><?= number_format((int) $kpi['total_habis'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint text-danger"><i class="bi bi-dash-circle"></i> Perlu restock segera</div>
+                </a>
+
+                <a href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris" class="kpi-card <?= $statusStok === 'segera_kedaluwarsa' ? 'active' : ''; ?>">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Alert Kedaluwarsa</span>
+                        <span class="kpi-icon icon-amber"><i class="bi bi-clock-history"></i></span>
+                    </div>
+                    <div class="kpi-value text-danger"><?= number_format((int) $kpi['total_exp_alert'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint text-danger"><i class="bi bi-bell"></i> &le; 90 hari / Expired</div>
+                </a>
+
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Estimasi Nilai Aset</span>
+                        <span class="kpi-icon icon-green"><i class="bi bi-cash-stack"></i></span>
+                    </div>
+                    <div class="kpi-value" style="font-size: 1.25rem;">
+                        Rp <?= number_format((int) $kpi['total_nilai_aset'], 0, ',', '.'); ?>
+                    </div>
+                    <div class="kpi-hint"><i class="bi bi-graph-up text-success"></i> Valuasi persediaan</div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <section class="safety-section section-space" id="cara-belanja">
+    <!-- Main Inventory Section -->
+    <section class="section-space" id="tabel-inventaris">
         <div class="container">
-            <div class="safety-heading">
-                <span class="eyebrow">PANDUAN KEAMANAN OBAT</span>
-                <h2>Gunakan obat dengan aman dan bijak.</h2>
-                <p>Informasi umum ini tidak menggantikan saran dokter atau apoteker. Selalu utamakan label kemasan dan petunjuk tenaga kesehatan.</p>
+            
+            <!-- Quick Filter Tab Pills (No Print) -->
+            <div class="filter-pills no-print">
+                <a href="index.php?status_stok=semua#tabel-inventaris" class="pill-tab <?= $statusStok === 'semua' ? 'active' : ''; ?>">
+                    <i class="bi bi-grid-fill"></i> Semua Obat <span class="pill-badge"><?= (int) $kpi['total_sku']; ?></span>
+                </a>
+                <a href="index.php?status_stok=aman#tabel-inventaris" class="pill-tab <?= $statusStok === 'aman' ? 'active' : ''; ?>">
+                    <i class="bi bi-check-circle-fill text-success"></i> Stok Aman
+                </a>
+                <a href="index.php?status_stok=menipis#tabel-inventaris" class="pill-tab <?= $statusStok === 'menipis' ? 'active' : ''; ?>">
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Perlu Reorder <span class="pill-badge"><?= (int) $kpi['total_menipis']; ?></span>
+                </a>
+                <a href="index.php?status_stok=habis#tabel-inventaris" class="pill-tab <?= $statusStok === 'habis' ? 'active' : ''; ?>">
+                    <i class="bi bi-x-circle-fill text-danger"></i> Stok Kosong <span class="pill-badge"><?= (int) $kpi['total_habis']; ?></span>
+                </a>
+                <a href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris" class="pill-tab <?= $statusStok === 'segera_kedaluwarsa' ? 'active' : ''; ?>">
+                    <i class="bi bi-hourglass-split text-danger"></i> Dekat Expired <span class="pill-badge"><?= (int) $kpi['total_exp_alert']; ?></span>
+                </a>
             </div>
-            <div class="safety-grid">
-                <article class="safety-card">
-                    <span class="safety-icon"><i class="bi bi-search-heart"></i></span>
-                    <div>
-                        <h3>Sebelum menggunakan</h3>
-                        <ul>
-                            <li>Pastikan nama obat, kemasan, dan tanggal kedaluwarsa terbaca serta dalam kondisi baik.</li>
-                            <li>Baca aturan pakai dan peringatan pada label. Obat resep hanya digunakan oleh orang yang mendapat resep.</li>
-                            <li>Tanyakan kepada dokter atau apoteker bila memiliki alergi, penyakit tertentu, sedang hamil atau menyusui, atau menggunakan obat dan suplemen lain.</li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="safety-card">
-                    <span class="safety-icon"><i class="bi bi-capsule"></i></span>
-                    <div>
-                        <h3>Saat menggunakan</h3>
-                        <ul>
-                            <li>Ikuti dosis, waktu, dan lama penggunaan sesuai label atau petunjuk dokter/apoteker.</li>
-                            <li>Jangan berbagi obat, mengubah dosis, menghentikan obat resep, atau menggandakan dosis yang terlewat tanpa arahan tenaga kesehatan.</li>
-                            <li>Jangan mencampur obat dengan alkohol atau obat lain sebelum memastikan keamanannya. Jangan membelah atau menghancurkan tablet kecuali diizinkan apoteker.</li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="safety-card">
-                    <span class="safety-icon"><i class="bi bi-house-check"></i></span>
-                    <div>
-                        <h3>Simpan dengan benar</h3>
-                        <ul>
-                            <li>Simpan dalam kemasan aslinya dan ikuti petunjuk suhu penyimpanan pada label.</li>
-                            <li>Jauhkan dari jangkauan anak-anak, panas, dan kelembapan. Jangan gunakan obat yang kedaluwarsa atau kemasannya rusak.</li>
-                            <li>Tanyakan kepada apoteker atau fasilitas kesehatan tentang cara membuang obat yang sudah tidak digunakan.</li>
-                        </ul>
-                    </div>
-                </article>
-                <article class="safety-card safety-card-alert">
-                    <span class="safety-icon"><i class="bi bi-exclamation-triangle"></i></span>
-                    <div>
-                        <h3>Kenali reaksi dan kondisi darurat</h3>
-                        <ul>
-                            <li>Jika muncul keluhan yang tidak biasa setelah minum obat, segera hubungi dokter atau apoteker untuk mendapat arahan.</li>
-                            <li>Kesulitan bernapas, pembengkakan wajah atau tenggorokan, maupun pingsan memerlukan pertolongan darurat segera.</li>
-                            <li>Jika terjadi dugaan overdosis atau anak tidak sengaja menelan obat, segera cari pertolongan medis. Jangan memicu muntah; bawa kemasan obat bila memungkinkan.</li>
-                        </ul>
-                    </div>
-                </article>
-            </div>
-            <p class="safety-disclaimer"><i class="bi bi-info-circle"></i> Jangan menunda pertolongan darurat untuk mencari saran melalui chat atau situs web.</p>
-        </div>
-    </section>
 
-    <section class="inventory-section section-space" id="kelola-produk">
-        <div class="container">
-            <div class="section-heading inventory-heading">
-                <div><span class="eyebrow">PENGELOLAAN</span><h2>Daftar inventaris</h2><p>Kelola informasi produk yang tampil di katalog.</p></div>
-                <a href="tambah.php" class="btn btn-primary-green"><i class="bi bi-plus-lg"></i> Tambah produk</a>
+            <!-- Inventory Search & Filter Toolbar -->
+            <div class="inventory-toolbar no-print">
+                <form method="GET" action="index.php#tabel-inventaris" class="toolbar-form" role="search">
+                    <div class="search-input-wrap">
+                        <i class="bi bi-search"></i>
+                        <input type="search" name="search" placeholder="Cari nama obat, merek pabrik, atau nomor batch..." value="<?= $escape($search); ?>">
+                    </div>
+
+                    <div>
+                        <select name="kategori" class="form-select form-select-sm">
+                            <option value="">Semua Kategori Farmasi</option>
+                            <?php foreach ($allowedCategories as $cat): ?>
+                                <option value="<?= $escape($cat); ?>" <?= $kategori === $cat ? 'selected' : ''; ?>><?= $escape($cat); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select name="status_stok" class="form-select form-select-sm">
+                            <option value="semua" <?= $statusStok === 'semua' ? 'selected' : ''; ?>>Semua Level Stok</option>
+                            <option value="aman" <?= $statusStok === 'aman' ? 'selected' : ''; ?>>Stok Aman (> Min)</option>
+                            <option value="menipis" <?= $statusStok === 'menipis' ? 'selected' : ''; ?>>Stok Menipis (&le; Min)</option>
+                            <option value="habis" <?= $statusStok === 'habis' ? 'selected' : ''; ?>>Stok Habis (0 Unit)</option>
+                            <option value="segera_kedaluwarsa" <?= $statusStok === 'segera_kedaluwarsa' ? 'selected' : ''; ?>>Mendekati Kedaluwarsa</option>
+                            <option value="kedaluwarsa" <?= $statusStok === 'kedaluwarsa' ? 'selected' : ''; ?>>Sudah Kedaluwarsa</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select name="sort" class="form-select form-select-sm">
+                            <option value="terbaru" <?= $sort === 'terbaru' ? 'selected' : ''; ?>>Urutan: Terbaru</option>
+                            <option value="nama_asc" <?= $sort === 'nama_asc' ? 'selected' : ''; ?>>Nama Obat (A - Z)</option>
+                            <option value="stok_asc" <?= $sort === 'stok_asc' ? 'selected' : ''; ?>>Stok Terendah (Reorder)</option>
+                            <option value="stok_desc" <?= $sort === 'stok_desc' ? 'selected' : ''; ?>>Stok Tertinggi</option>
+                            <option value="exp_asc" <?= $sort === 'exp_asc' ? 'selected' : ''; ?>>Expired Terdekat</option>
+                            <option value="harga_desc" <?= $sort === 'harga_desc' ? 'selected' : ''; ?>>Harga Tertinggi</option>
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary-green btn-sm px-3">
+                            <i class="bi bi-funnel"></i> Terapkan
+                        </button>
+                        <?php if ($search !== '' || $kategori !== '' || $statusStok !== 'semua' || $sort !== 'terbaru'): ?>
+                            <a href="index.php#tabel-inventaris" class="btn btn-outline-secondary btn-sm" title="Reset filter">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </form>
             </div>
-            <div class="inventory-card">
+
+            <!-- Table Container -->
+            <div class="inventory-table-container">
+                <div class="table-header-meta">
+                    <div>
+                        Menampilkan <strong><?= count($items); ?></strong> item terdata
+                        <?php if ($search !== ''): ?> untuk pencarian "<strong><?= $escape($search); ?></strong>"<?php endif; ?>
+                        <?php if ($kategori !== ''): ?> dalam kategori "<strong><?= $escape($kategori); ?></strong>"<?php endif; ?>
+                        <?php if ($statusStok !== 'semua'): ?> dengan status "<strong><?= $escape(str_replace('_', ' ', $statusStok)); ?></strong>"<?php endif; ?>
+                    </div>
+                    <div class="d-none d-md-flex align-items-center gap-3">
+                        <span><i class="bi bi-info-circle text-success me-1"></i> Klik nama item untuk melihat deskripsi & catatan rak.</span>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead><tr><th>Nama produk</th><th>Kategori</th><th>Harga</th><th>Stok</th><th class="text-end">Aksi</th></tr></thead>
+                    <table class="table inventory-table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;" class="text-center">No</th>
+                                <th>Produk & Merek</th>
+                                <th>Kategori</th>
+                                <th>Batch / Kemasan</th>
+                                <th>Level Stok & Status</th>
+                                <th>Harga Beli / Jual</th>
+                                <th>Masa Kedaluwarsa</th>
+                                <th class="text-end no-print" style="width: 120px;">Aksi</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            <?php if ($products): foreach ($products as $product): ?>
+                            <?php if ($items): ?>
+                                <?php $no = 1; foreach ($items as $item): ?>
+                                    <?php
+                                    $stok = (int) $item['stok'];
+                                    $stokMin = isset($item['stok_minimum']) ? (int) $item['stok_minimum'] : 5;
+                                    $satuan = $item['satuan'] ?? 'pcs';
+                                    $hargaBeli = isset($item['harga_beli']) ? (int) $item['harga_beli'] : 0;
+                                    $hargaJual = (int) $item['harga'];
+                                    $batch = $item['nomor_batch'] ?? '-';
+                                    $expDate = $item['tanggal_kedaluwarsa'] ?? null;
+
+                                    // Evaluasi Status Stok
+                                    if ($stok === 0) {
+                                        $stockClass = 'stock-badge-danger';
+                                        $stockLabel = 'Stok Habis';
+                                        $stockIcon = 'bi-x-circle-fill';
+                                    } elseif ($stok <= $stokMin) {
+                                        $stockClass = 'stock-badge-warn';
+                                        $stockLabel = 'Perlu Restock';
+                                        $stockIcon = 'bi-exclamation-triangle-fill';
+                                    } else {
+                                        $stockClass = 'stock-badge-safe';
+                                        $stockLabel = 'Stok Aman';
+                                        $stockIcon = 'bi-check-circle-fill';
+                                    }
+
+                                    // Evaluasi Status Kedaluwarsa
+                                    $expBadge = '';
+                                    if ($expDate) {
+                                        try {
+                                            $expObj = new DateTimeImmutable($expDate);
+                                            $diff = $today->diff($expObj);
+                                            $isExpired = $expObj < $today;
+                                            $daysRemaining = (int) $diff->format('%r%a');
+
+                                            if ($isExpired) {
+                                                $expBadge = '<span class="exp-badge exp-danger"><i class="bi bi-x-octagon-fill"></i> Kadaluarsa (' . $expObj->format('d/m/Y') . ')</span>';
+                                            } elseif ($daysRemaining <= 90) {
+                                                $expBadge = '<span class="exp-badge exp-warning"><i class="bi bi-alarm-fill"></i> ' . $daysRemaining . ' hari (' . $expObj->format('d/m/Y') . ')</span>';
+                                            } else {
+                                                $expBadge = '<span class="exp-badge exp-safe"><i class="bi bi-calendar-check"></i> ' . $expObj->format('d M Y') . '</span>';
+                                            }
+                                        } catch (Exception $e) {
+                                            $expBadge = '<span class="text-muted small">-</span>';
+                                        }
+                                    } else {
+                                        $expBadge = '<span class="text-muted small">Non-expired</span>';
+                                    }
+                                    ?>
+                                    <tr>
+                                        <td class="text-center text-muted small"><?= $no++; ?></td>
+                                        <td>
+                                            <div class="product-cell">
+                                                <a href="javascript:void(0)" class="product-name" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)'>
+                                                    <?= $escape($item['nama_menu']); ?>
+                                                </a>
+                                                <span class="product-brand">
+                                                    <?php if (!empty($item['merek'])): ?>
+                                                        <i class="bi bi-building"></i> <?= $escape($item['merek']); ?>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">Generik / Tanpa Merek</span>
+                                                    <?php endif; ?>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="table-category"><?= $escape($item['kategori']); ?></span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column gap-1">
+                                                <span class="batch-tag"><?= $escape($batch !== '' ? $batch : '-'); ?></span>
+                                                <small class="text-muted">Satuan: <strong><?= $escape($satuan); ?></strong></small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="stock-wrap">
+                                                <div class="stock-level">
+                                                    <span><?= number_format($stok, 0, ',', '.'); ?></span>
+                                                    <small><?= $escape($satuan); ?></small>
+                                                </div>
+                                                <span class="stock-badge <?= $stockClass; ?>">
+                                                    <i class="bi <?= $stockIcon; ?>"></i> <?= $stockLabel; ?>
+                                                </span>
+                                                <small class="text-muted" style="font-size: .68rem;">Min: <?= $stokMin; ?> <?= $escape($satuan); ?></small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="price-cell">
+                                                <span class="price-sell">Jual: Rp <?= number_format($hargaJual, 0, ',', '.'); ?></span>
+                                                <span class="price-buy">HPP: Rp <?= number_format($hargaBeli, 0, ',', '.'); ?></span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <?= $expBadge; ?>
+                                        </td>
+                                        <td class="text-end no-print">
+                                            <div class="action-buttons">
+                                                <button type="button" class="table-action detail-action" title="Lihat Detail & Lokasi Rak" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)' aria-label="Lihat detail obat">
+                                                    <i class="bi bi-info-circle"></i>
+                                                </button>
+                                                <a href="edit.php?id=<?= (int) $item['id']; ?>" class="table-action edit-action" title="Edit Data Inventaris" aria-label="Edit <?= $escape($item['nama_menu']); ?>">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <button type="button" class="table-action delete-action" title="Hapus Produk" onclick="confirmDelete(<?= (int) $item['id']; ?>, '<?= $escape($item['nama_menu']); ?>')" aria-label="Hapus <?= $escape($item['nama_menu']); ?>">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
                                 <tr>
-                                    <td class="inventory-name"><?= $escape($product['nama_menu']); ?></td>
-                                    <td><span class="table-category"><?= $escape($product['kategori']); ?></span></td>
-                                    <td>Rp <?= number_format((int) $product['harga'], 0, ',', '.'); ?></td>
-                                    <td><?= (int) $product['stok']; ?> unit</td>
-                                    <td class="text-end text-nowrap">
-                                        <a href="edit.php?id=<?= (int) $product['id']; ?>" class="table-action edit-action" aria-label="Edit <?= $escape($product['nama_menu']); ?>"><i class="bi bi-pencil"></i></a>
-                                        <button type="button" class="table-action delete-action" aria-label="Hapus <?= $escape($product['nama_menu']); ?>" onclick="confirmDelete(<?= (int) $product['id']; ?>)"><i class="bi bi-trash3"></i></button>
+                                    <td colspan="8" class="p-0">
+                                        <div class="inventory-empty">
+                                            <div class="inventory-empty-icon"><i class="bi bi-inbox"></i></div>
+                                            <h3>Tidak Ada Data Inventaris</h3>
+                                            <p>Tidak ditemukan produk obat yang cocok dengan filter atau kriteria pencarian saat ini.</p>
+                                            <a href="index.php#tabel-inventaris" class="btn btn-outline-green btn-sm me-2">
+                                                <i class="bi bi-arrow-clockwise me-1"></i> Tampilkan Semua
+                                            </a>
+                                            <a href="tambah.php" class="btn btn-primary-green btn-sm">
+                                                <i class="bi bi-plus-lg me-1"></i> Tambah Produk Baru
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="5" class="text-center py-4 text-muted">Belum ada produk. Tambahkan produk pertama untuk mulai mengisi katalog.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
-    </section>
 
-    <section class="contact-section section-space" id="kontak">
-        <div class="container contact-card">
-            <div class="contact-mark"><i class="bi bi-chat-square-heart"></i></div>
-            <div class="contact-copy"><span class="eyebrow">KAMI SIAP MEMBANTU</span><h2>Ada yang ingin ditanyakan?</h2><p>Untuk pertanyaan tentang penggunaan obat, konsultasikan langsung dengan dokter atau apoteker. Untuk bantuan pesanan, hubungi apotek tempat kamu bertransaksi.</p></div>
-            <a href="#cara-belanja" class="btn btn-primary-green">Panduan keamanan obat <i class="bi bi-arrow-up-right"></i></a>
+            <!-- Bagian Tanda Tangan Cetak Fisik -->
+            <div class="print-signatures">
+                <div>
+                    <p class="mb-5">Petugas Gudang / Logistik Farmasi,</p>
+                    <p class="fw-bold mt-5 mb-0">___________________________</p>
+                    <small>NIP / Identitas Petugas</small>
+                </div>
+                <div class="text-end">
+                    <p class="mb-5">Apoteker Pengelola Apotek (APA),</p>
+                    <p class="fw-bold mt-5 mb-0">___________________________</p>
+                    <small>SIPA: .......................................</small>
+                </div>
+            </div>
+
         </div>
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="container footer-content"><a class="navbar-brand brand-mark" href="index.php"><span class="brand-icon"><i class="bi bi-plus-lg"></i></span><span>sehat<span class="brand-highlight">mart</span><small>APOTEK ONLINE</small></span></a><p>Teman sehat untuk kebutuhan setiap hari.</p><span>© <?= date('Y'); ?> SehatMart. Gunakan obat secara bijak.</span></div>
+<!-- Modal Detail Item & Catatan Penyimpanan Rak -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal">
+            <div class="modal-header border-bottom">
+                <div>
+                    <span class="eyebrow" id="detailKategori">KATEGORI OBAT</span>
+                    <h2 class="modal-title h5 mb-0 fw-bold" id="detailNama">Nama Produk</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Merek / Pabrik</small>
+                        <strong id="detailMerek">-</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Nomor Batch / Lot</small>
+                        <span class="batch-tag" id="detailBatch">-</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Stok Saat Ini</small>
+                        <strong class="text-success h5 mb-0" id="detailStok">-</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Batas Reorder Minimum</small>
+                        <strong id="detailMinStok">-</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Harga Beli (HPP)</small>
+                        <strong id="detailHargaBeli">-</strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Harga Jual Satuan</small>
+                        <strong class="text-primary" id="detailHargaJual">-</strong>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Tanggal Kedaluwarsa</small>
+                        <div id="detailExp">-</div>
+                    </div>
+                    <div class="col-12">
+                        <small class="text-muted d-block">Deskripsi / Catatan Rak Penyimpanan</small>
+                        <div class="p-3 bg-light rounded mt-1 border text-secondary" id="detailDeskripsi" style="font-size: .88rem; white-space: pre-wrap;">-</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top bg-light">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                <a href="#" id="detailEditBtn" class="btn btn-primary-green btn-sm">
+                    <i class="bi bi-pencil me-1"></i> Edit Data Ini
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="site-footer no-print">
+    <div class="container footer-content">
+        <div class="brand-mark">
+            <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
+            <span>sehat<span class="brand-highlight">mart</span><small>SISTEM INVENTARIS APOTEK</small></span>
+        </div>
+        <p>Sistem Pengendalian Stok & Pergudangan Farmasi.</p>
+        <span>&copy; <?= date('Y'); ?> SehatMart Inventaris. Hak Cipta Dilindungi.</span>
+    </div>
 </footer>
-
-<div class="offcanvas offcanvas-end cart-panel" tabindex="-1" id="cartPanel" aria-labelledby="cartPanelTitle">
-    <div class="offcanvas-header"><div><span class="eyebrow">BELANJAANMU</span><h2 class="offcanvas-title" id="cartPanelTitle">Keranjang</h2></div><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button></div>
-    <div class="offcanvas-body"><div id="cartItems" class="cart-items"></div><div class="cart-empty" id="cartEmpty"><i class="bi bi-bag"></i><h3>Keranjang masih kosong</h3><p>Tambahkan produk dari katalog untuk melihatnya di sini.</p></div><div class="cart-summary" id="cartSummary"><div><span>Total sementara</span><strong id="cartTotal">Rp 0</strong></div><p>Keranjang ini hanya tersimpan di browser dan belum memproses pembayaran.</p></div></div>
-</div>
-
-<div class="modal fade" id="accountModal" tabindex="-1" aria-labelledby="accountModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content custom-modal"><div class="modal-header"><div><span class="eyebrow">PROFIL LOKAL</span><h2 class="modal-title" id="accountModalTitle">Akun kamu</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body"><p class="modal-description">Simpan nama untuk personalisasi halaman ini. Fitur akun ini tersimpan di browser, belum menggunakan login.</p><label class="form-label" for="accountName">Nama panggilan</label><input class="form-control" id="accountName" type="text" maxlength="40" placeholder="Contoh: Dita"><button class="btn btn-primary-green w-100 mt-3" id="saveAccount" type="button">Simpan nama</button><button class="btn btn-link text-muted w-100 mt-1" id="clearAccount" type="button">Hapus nama tersimpan</button></div></div></div>
-</div>
-
-<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered"><div class="modal-content custom-modal"><div class="modal-header"><div><span class="eyebrow">PREFERENSI</span><h2 class="modal-title" id="settingsModalTitle">Pengaturan</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body"><div class="setting-row"><div><strong>Tampilan nyaman</strong><small>Gunakan latar yang lebih redup.</small></div><div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="themeToggle" aria-label="Aktifkan tampilan redup"></div></div><p class="modal-description mt-3 mb-0">Preferensi disimpan di browser ini.</p></div></div></div>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const currency = new Intl.NumberFormat('id-ID');
-let cart = [];
-try {
-    cart = JSON.parse(localStorage.getItem('sehatmart-cart') || '[]');
-    if (!Array.isArray(cart)) cart = [];
-} catch (error) {
-    console.error('Keranjang lokal tidak dapat dibaca.', error);
-}
 
-function saveCart() {
-    localStorage.setItem('sehatmart-cart', JSON.stringify(cart));
-    renderCart();
-}
-
-function renderCart() {
-    const items = document.getElementById('cartItems');
-    const empty = document.getElementById('cartEmpty');
-    const summary = document.getElementById('cartSummary');
-    const quantity = cart.reduce((total, item) => total + item.quantity, 0);
-    document.getElementById('cartCount').textContent = quantity;
-    items.replaceChildren();
-
-    cart.forEach((item) => {
-        const row = document.createElement('div');
-        row.className = 'cart-item';
-        const details = document.createElement('div');
-        const name = document.createElement('strong');
-        name.textContent = item.name;
-        const price = document.createElement('small');
-        price.textContent = `Rp ${currency.format(item.price)} × ${item.quantity}`;
-        details.append(name, price);
-        const remove = document.createElement('button');
-        remove.className = 'cart-remove';
-        remove.type = 'button';
-        remove.setAttribute('aria-label', `Hapus ${item.name} dari keranjang`);
-        remove.innerHTML = '<i class="bi bi-trash3"></i>';
-        remove.addEventListener('click', () => {
-            cart = cart.filter((cartItem) => cartItem.id !== item.id);
-            saveCart();
-        });
-        row.append(details, remove);
-        items.append(row);
-    });
-
-    empty.hidden = cart.length > 0;
-    summary.classList.toggle('visible', cart.length > 0);
-    document.getElementById('cartTotal').textContent = `Rp ${currency.format(cart.reduce((total, item) => total + item.price * item.quantity, 0))}`;
-}
-
-document.querySelectorAll('.add-to-cart').forEach((button) => {
-    button.addEventListener('click', () => {
-        Swal.fire({
-            title: 'Tambahkan ke keranjang?',
-            text: `${button.dataset.name} — Rp ${currency.format(Number(button.dataset.price))}`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#267b58',
-            cancelButtonColor: '#718078',
-            confirmButtonText: 'Ya, tambahkan',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (!result.isConfirmed) return;
-
-            const id = Number(button.dataset.id);
-            const item = cart.find((cartItem) => cartItem.id === id);
-            if (item) item.quantity += 1;
-            else cart.push({ id, name: button.dataset.name, price: Number(button.dataset.price), quantity: 1 });
-            saveCart();
-            button.innerHTML = '<i class="bi bi-check2"></i>';
-            window.setTimeout(() => { button.innerHTML = '<i class="bi bi-plus-lg"></i>'; }, 900);
-        });
-    });
-});
-
-const accountName = document.getElementById('accountName');
-function loadAccount() {
-    const name = localStorage.getItem('sehatmart-name') || '';
-    accountName.value = name;
-    document.getElementById('accountLabel').textContent = name || 'Akun';
-}
-document.getElementById('saveAccount').addEventListener('click', () => {
-    const name = accountName.value.trim();
-    if (!name) {
-        accountName.focus();
-        return;
-    }
-    localStorage.setItem('sehatmart-name', name);
-    loadAccount();
-    bootstrap.Modal.getInstance(document.getElementById('accountModal')).hide();
-});
-document.getElementById('clearAccount').addEventListener('click', () => {
-    localStorage.removeItem('sehatmart-name');
-    loadAccount();
-});
-
-const themeToggle = document.getElementById('themeToggle');
-themeToggle.checked = localStorage.getItem('sehatmart-dim') === 'true';
-document.body.classList.toggle('dim-theme', themeToggle.checked);
-themeToggle.addEventListener('change', () => {
-    document.body.classList.toggle('dim-theme', themeToggle.checked);
-    localStorage.setItem('sehatmart-dim', String(themeToggle.checked));
-});
-
-function confirmDelete(id) {
+// Konfirmasi Hapus Produk
+function confirmDelete(id, nama) {
     Swal.fire({
-        title: 'Hapus produk ini?',
-        text: 'Produk akan dihapus dari katalog.',
+        title: 'Hapus dari Inventaris?',
+        text: `Data "${nama}" akan dihapus permanen dari sistem stok obat.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d15f4b',
-        cancelButtonColor: '#718078',
-        confirmButtonText: 'Ya, hapus',
+        confirmButtonColor: '#e2634d',
+        cancelButtonColor: '#738078',
+        confirmButtonText: 'Ya, Hapus Data',
         cancelButtonText: 'Batal'
     }).then((result) => {
-        if (result.isConfirmed) window.location.href = `hapus.php?id=${id}`;
+        if (result.isConfirmed) {
+            window.location.href = `hapus.php?id=${id}`;
+        }
     });
 }
 
-renderCart();
-loadAccount();
+// Modal Detail Item
+const detailModal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+function showItemDetail(item) {
+    document.getElementById('detailNama').textContent = item.nama_menu || '-';
+    document.getElementById('detailKategori').textContent = item.kategori || 'OBAT';
+    document.getElementById('detailMerek').textContent = item.merek || 'Generik / Tanpa Merek';
+    document.getElementById('detailBatch').textContent = item.nomor_batch || '-';
+    document.getElementById('detailStok').textContent = `${Number(item.stok).toLocaleString('id-ID')} ${item.satuan || 'pcs'}`;
+    document.getElementById('detailMinStok').textContent = `${Number(item.stok_minimum || 5).toLocaleString('id-ID')} ${item.satuan || 'pcs'}`;
+    document.getElementById('detailHargaBeli').textContent = `Rp ${currency.format(Number(item.harga_beli || 0))}`;
+    document.getElementById('detailHargaJual').textContent = `Rp ${currency.format(Number(item.harga || 0))}`;
+    document.getElementById('detailExp').textContent = item.tanggal_kedaluwarsa ? item.tanggal_kedaluwarsa : 'Tidak ada tanggal kedaluwarsa';
+    document.getElementById('detailDeskripsi').textContent = item.deskripsi ? item.deskripsi : 'Tidak ada catatan penyimpanan.';
+    document.getElementById('detailEditBtn').href = `edit.php?id=${item.id}`;
+    detailModal.show();
+}
 
-<?php if (isset($statusMessages[$status])): ?>
-Swal.fire('Berhasil!', <?= json_encode($statusMessages[$status]); ?>, 'success');
+// Pengaturan Tema Redup / Normal
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeIcon = document.getElementById('themeIcon');
+function applyTheme(isDim) {
+    document.body.classList.toggle('dim-theme', isDim);
+    if (isDim) {
+        themeIcon.classList.remove('bi-moon-stars');
+        themeIcon.classList.add('bi-sun');
+    } else {
+        themeIcon.classList.remove('bi-sun');
+        themeIcon.classList.add('bi-moon-stars');
+    }
+}
+const isDimSaved = localStorage.getItem('sehatmart-dim') === 'true';
+applyTheme(isDimSaved);
+
+themeToggleBtn.addEventListener('click', () => {
+    const isNowDim = !document.body.classList.contains('dim-theme');
+    applyTheme(isNowDim);
+    localStorage.setItem('sehatmart-dim', String(isNowDim));
+});
+
+// Alert Notifikasi Operasi
+<?php if (isset($statusMessages[$alertStatus])): ?>
+Swal.fire({
+    title: 'Sukses!',
+    text: <?= json_encode($statusMessages[$alertStatus]); ?>,
+    icon: 'success',
+    confirmButtonColor: '#267b58'
+});
 <?php endif; ?>
 </script>
 </body>
