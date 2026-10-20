@@ -32,7 +32,6 @@ $schemaError = '';
 $escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $textLength = static fn(string $value): int => function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 
-// Pastikan kolom tambahan tersedia (sama seperti tambah.php).
 $kolomTambahan = [
     'merek' => "ALTER TABLE menu ADD COLUMN merek VARCHAR(100) NULL AFTER kategori",
     'satuan' => "ALTER TABLE menu ADD COLUMN satuan VARCHAR(30) NOT NULL DEFAULT 'pcs' AFTER merek",
@@ -61,7 +60,6 @@ foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
     }
 }
 
-// Ambil data produk.
 $data = null;
 if ($schemaError === '') {
     $stmt = $conn->prepare('SELECT * FROM menu WHERE id = ?');
@@ -90,7 +88,6 @@ $form = [
     'deskripsi' => (string) ($data['deskripsi'] ?? '')
 ];
 
-// Jika kategori/satuan lama tidak ada di daftar, tetap tampilkan agar tidak hilang.
 if ($form['kategori'] !== '' && !in_array($form['kategori'], $kategori_produk, true)) {
     $kategori_produk[] = $form['kategori'];
 }
