@@ -183,9 +183,6 @@ $today = new DateTimeImmutable('today');
                     <p>Monitoring stok fisik, masa kedaluwarsa batch obat, batas minimum pemesanan kembali (reorder point), dan valuasi aset farmasi secara real-time.</p>
                 </div>
                 <div class="hero-actions no-print">
-                    <button type="button" class="btn btn-outline-green" onclick="window.print()">
-                        <i class="bi bi-printer me-1"></i> Cetak Lembar Inventaris
-                    </button>
                     <a href="tambah.php" class="btn btn-primary-green">
                         <i class="bi bi-plus-circle me-1"></i> Catat Barang Masuk
                     </a>
