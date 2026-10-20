@@ -161,9 +161,6 @@ $today = new DateTimeImmutable('today');
                 <li class="nav-item"><a class="nav-link" href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris"><i class="bi bi-calendar-event me-1"></i> Cek Kedaluwarsa</a></li>
             </ul>
             <div class="nav-actions">
-                <button class="icon-button" type="button" onclick="window.print()" title="Cetak Rekap Inventaris" aria-label="Cetak rekap inventaris">
-                    <i class="bi bi-printer"></i>
-                </button>
                 <button class="icon-button" type="button" id="themeToggleBtn" title="Ganti Tema Tampilan" aria-label="Ganti tema tampilan">
                     <i class="bi bi-moon-stars" id="themeIcon"></i>
                 </button>
