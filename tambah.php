@@ -24,7 +24,7 @@ $satuan_produk = [
 
 $error = '';
 $schemaError = '';
-$escape = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+$escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 $textLength = static fn(string $value): int => function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 
 $form = [
@@ -36,7 +36,8 @@ $form = [
     'harga' => '0',
     'stok' => '0',
     'tanggal_kedaluwarsa' => '',
-    'deskripsi' => ''
+    'deskripsi' => '',
+    'opsi_stok_habis' => 'restok'
 ];
 
 /*
@@ -153,6 +154,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
         }
     }
 }
+
+// Ambil data produk yang stoknya habis (0 unit) untuk opsi cepat Restok / Hapus
+$produkStokHabis = [];
+$resHabis = $conn->query("SELECT id, nama_menu, kategori, harga, satuan FROM menu WHERE stok <= 0 ORDER BY id DESC LIMIT 5");
+if ($resHabis) {
+    $produkStokHabis = $resHabis->fetch_all(MYSQLI_ASSOC);
+    $resHabis->free();
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -164,315 +173,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <style>
-        :root {
-            --form-bg: #f8faf8;
-            --card-border: #e2ebe4;
-            --card-bg: #ffffff;
-            --input-border: #d4ded7;
-            --input-focus: #267b58;
-            --text-heading: #1d3328;
-            --text-muted: #6f7f76;
-            --accent-soft: #edf6f0;
-        }
-
-        body {
-            background-color: var(--form-bg);
-            color: var(--text-heading);
-            min-height: 100vh;
-        }
-
-        .form-page-wrapper {
-            max-width: 880px;
-            margin: 0 auto;
-        }
-
-        .page-header-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f2f8f4 100%);
-            border: 1px solid var(--card-border);
-            border-radius: 18px;
-            padding: 1.75rem 2rem;
-            margin-bottom: 1.75rem;
-            box-shadow: 0 4px 20px rgba(38, 123, 88, 0.04);
-        }
-
-        .header-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 12px;
-            background: var(--accent-soft);
-            color: var(--green, #267b58);
-            border: 1px solid #d5e9dc;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .main-form-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            box-shadow: 0 12px 36px rgba(24, 85, 61, 0.06);
-            overflow: hidden;
-        }
-
-        .form-section {
-            padding: 1.75rem 2rem;
-            border-bottom: 1px solid #edf2ee;
-            transition: background-color 0.2s ease;
-        }
-
-        .form-section:last-of-type {
-            border-bottom: none;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 1.5rem;
-        }
-
-        .section-icon-badge {
-            width: 44px;
-            height: 44px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            background: var(--green-soft, #e7f3eb);
-            color: var(--green, #267b58);
-            font-size: 1.25rem;
-            flex-shrink: 0;
-            border: 1px solid #d4e7db;
-        }
-
-        .section-title {
-            margin: 0;
-            font-size: 1.12rem;
-            font-weight: 750;
-            color: var(--text-heading);
-            letter-spacing: -0.2px;
-        }
-
-        .section-desc {
-            margin: 2px 0 0 0;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-        }
-
-        .form-label {
-            font-size: 0.86rem;
-            font-weight: 650;
-            color: #2e4337;
-            margin-bottom: 0.45rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .form-label .required-star {
-            color: #dc3545;
-            margin-left: 2px;
-        }
-
-        .form-control, .form-select {
-            border: 1.5px solid var(--input-border);
-            border-radius: 11px;
-            padding: 0.65rem 0.95rem;
-            font-size: 0.92rem;
-            color: #21372d;
-            background-color: #ffffff;
-            transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
-        }
-
-        .form-control:hover, .form-select:hover {
-            border-color: #b8ccbe;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--green, #267b58);
-            box-shadow: 0 0 0 4px rgba(38, 123, 88, 0.12);
-            background-color: #ffffff;
-        }
-
-        .input-group-text {
-            background-color: #f4f8f5;
-            border: 1.5px solid var(--input-border);
-            border-right: none;
-            color: var(--green, #267b58);
-            font-weight: 700;
-            font-size: 0.88rem;
-            border-radius: 11px 0 0 11px;
-            padding: 0 0.9rem;
-        }
-
-        .input-group .form-control {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-        }
-
-        .input-group:focus-within .input-group-text {
-            border-color: var(--green, #267b58);
-        }
-
-        .form-text {
-            color: var(--text-muted);
-            font-size: 0.77rem;
-            margin-top: 0.35rem;
-        }
-
-        .expiry-info-card {
-            background: linear-gradient(135deg, #f7faf8 0%, #edf5f0 100%);
-            border: 1px solid #d9e8de;
-            border-radius: 14px;
-            padding: 1.15rem 1.25rem;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            height: 100%;
-        }
-
-        .expiry-info-card i {
-            color: var(--green, #267b58);
-            font-size: 1.3rem;
-            line-height: 1.2;
-            flex-shrink: 0;
-        }
-
-        .expiry-info-card strong {
-            display: block;
-            font-size: 0.86rem;
-            color: var(--text-heading);
-            margin-bottom: 2px;
-        }
-
-        .expiry-info-card p {
-            margin: 0;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            line-height: 1.45;
-        }
-
-        .profit-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.76rem;
-            font-weight: 700;
-            padding: 5px 10px;
-            border-radius: 8px;
-            margin-top: 6px;
-            transition: all 0.2s ease;
-        }
-        .profit-badge.positive {
-            background: #e6f6ec;
-            color: #1b6d46;
-            border: 1px solid #c5ebd2;
-        }
-        .profit-badge.negative {
-            background: #fdeeee;
-            color: #c03225;
-            border: 1px solid #fad2cf;
-        }
-        .profit-badge.neutral {
-            background: #f1f4f2;
-            color: #607267;
-            border: 1px solid #dbe2de;
-        }
-
-        .form-actions-footer {
-            background: #fafcfa;
-            border-top: 1px solid #edf2ee;
-            padding: 1.5rem 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-cancel {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 46px;
-            padding: 0 1.5rem;
-            border: 1.5px solid #d4ded7;
-            border-radius: 11px;
-            background: #ffffff;
-            color: #4a5c52;
-            font-size: 0.9rem;
-            font-weight: 650;
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
-
-        .btn-cancel:hover {
-            background: #f0f4f1;
-            border-color: #bccbc0;
-            color: #21372d;
-        }
-
-        .btn-submit-save {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 46px;
-            padding: 0 1.75rem;
-            border: 1px solid var(--green, #267b58);
-            border-radius: 11px;
-            background: var(--green, #267b58);
-            color: #ffffff;
-            font-size: 0.92rem;
-            font-weight: 700;
-            box-shadow: 0 4px 14px rgba(38, 123, 88, 0.22);
-            transition: all 0.2s ease;
-        }
-
-        .btn-submit-save:hover:not(:disabled) {
-            background: var(--green-dark, #18553d);
-            border-color: var(--green-dark, #18553d);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(38, 123, 88, 0.3);
-            color: #ffffff;
-        }
-
-        .btn-submit-save:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .footnote-tip {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            color: #7b8b82;
-            font-size: 0.8rem;
-            margin-top: 1rem;
-            padding: 0 0.5rem;
-        }
-
-        @media (max-width: 576px) {
-            .page-header-card {
-                padding: 1.25rem 1.25rem;
-            }
-            .form-section {
-                padding: 1.25rem 1.25rem;
-            }
-            .form-actions-footer {
-                padding: 1.25rem 1.25rem;
-                flex-direction: column-reverse;
-            }
-            .btn-cancel, .btn-submit-save {
-                width: 100%;
-            }
-        }
-    </style>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav">
@@ -503,6 +203,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
                 </div>
             </div>
         </div>
+
+        <?php if (!empty($produkStokHabis)): ?>
+            <!-- Panel Produk Stok Habis Terdeteksi (Opsi Restok atau Hapus) -->
+            <div class="out-of-stock-panel">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                    <h3><i class="bi bi-exclamation-triangle-fill text-warning"></i> Perhatian: Terdapat <?= count($produkStokHabis); ?> Produk Stok Habis di Apotek</h3>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Perlu Tindakan</span>
+                </div>
+                <p class="mb-3">Jika produk yang ingin Anda input sudah ada di daftar obat habis ini, Anda dapat langsung memilih untuk me-<strong>Restok Kembali</strong> atau me-<strong>Hapus</strong> produk:</p>
+                <div class="d-flex flex-column gap-2">
+                    <?php foreach ($produkStokHabis as $itemHabis): ?>
+                        <div class="out-of-stock-item">
+                            <div>
+                                <strong><?= $escape($itemHabis['nama_menu']); ?></strong>
+                                <span class="badge bg-light text-secondary border ms-1"><?= $escape($itemHabis['kategori']); ?></span>
+                                <span class="badge bg-danger-subtle text-danger ms-1">Stok: 0 <?= $escape($itemHabis['satuan'] ?? 'pcs'); ?></span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="edit.php?id=<?= (int)$itemHabis['id']; ?>" class="btn btn-sm btn-outline-success" title="Restok produk ini">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Restok Kembali
+                                </a>
+                                <a href="hapus.php?id=<?= (int)$itemHabis['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus produk <?= $escape(addslashes($itemHabis['nama_menu'])); ?> secara permanen?');" title="Hapus produk">
+                                    <i class="bi bi-trash3 me-1"></i> Hapus
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <?php if ($schemaError !== ''): ?>
             <div class="alert alert-danger shadow-sm border-0 rounded-3 mb-4" role="alert">
@@ -635,6 +365,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
                         </label>
                         <input id="stok" name="stok" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['stok']); ?>" required>
                         <div class="form-text">Jumlah kuantitas fisik produk yang tersedia saat ini.</div>
+
+                        <!-- Peringatan Dinamis jika Stok = 0 -->
+                        <div id="stokZeroAlert" class="stock-empty-alert" style="display: none;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                                <div>
+                                    <strong class="d-block text-danger">Stok diisi 0 (Stok Habis)</strong>
+                                    <span class="small text-muted">Produk berstatus habis. Pilih kebijakan tindakan:</span>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2 mt-sm-0">
+                                <button type="button" class="btn btn-sm btn-success" onclick="document.getElementById('opsiRestok').checked = true;">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Siap Restok
+                                </button>
+                                <a href="index.php" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash3 me-1"></i> Batal / Hapus
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-md-6">
@@ -643,6 +392,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
                             <div>
                                 <strong>Pengelolaan Stok Otomatis</strong>
                                 <p>Kuantitas stok produk akan langsung tercatat di inventaris dan diperbarui saat terjadi transaksi.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Jika Stok Habis -->
+                    <div class="col-12 mt-3">
+                        <label class="form-label mb-1">
+                            <span>Pilihan Tindakan Jika Stok Habis (0 Unit)</span>
+                            <span class="badge bg-light text-muted fw-normal border">Kebijakan Inventaris</span>
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check stock-action-card p-3 border rounded-3 bg-light-subtle h-100">
+                                    <input class="form-check-input ms-0 me-2" type="radio" name="opsi_stok_habis" id="opsiRestok" value="restok" <?= ($form['opsi_stok_habis'] ?? 'restok') === 'restok' ? 'checked' : ''; ?>>
+                                    <label class="form-check-label w-100" for="opsiRestok">
+                                        <strong class="d-block text-success mb-1"><i class="bi bi-arrow-repeat me-1"></i> Izinkan Restok Kembali</strong>
+                                        <span class="small text-muted">Produk tetap tersimpan di katalog saat stok 0, siap untuk di-restok ulang sewaktu-waktu.</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check stock-action-card p-3 border rounded-3 bg-light-subtle h-100">
+                                    <input class="form-check-input ms-0 me-2" type="radio" name="opsi_stok_habis" id="opsiHapus" value="hapus" <?= ($form['opsi_stok_habis'] ?? '') === 'hapus' ? 'checked' : ''; ?>>
+                                    <label class="form-check-label w-100" for="opsiHapus">
+                                        <strong class="d-block text-danger mb-1"><i class="bi bi-trash3 me-1"></i> Siapkan Opsi Hapus</strong>
+                                        <span class="small text-muted">Tandai produk untuk langsung dihapus dari katalog jika stok sudah habis atau tidak dijual lagi.</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -705,6 +482,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
         const beliInput = document.getElementById('harga_beli');
         const jualInput = document.getElementById('harga');
         const profitBadge = document.getElementById('profitPreview');
+        const stokInput = document.getElementById('stok');
+        const stokZeroAlert = document.getElementById('stokZeroAlert');
 
         function updateMargin() {
             if (!beliInput || !jualInput || !profitBadge) return;
@@ -733,9 +512,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
             }
         }
 
+        function checkZeroStock() {
+            if (!stokInput || !stokZeroAlert) return;
+            const stokVal = parseInt(stokInput.value, 10);
+            if (stokVal === 0 || stokInput.value.trim() === '0') {
+                stokZeroAlert.style.display = 'flex';
+            } else {
+                stokZeroAlert.style.display = 'none';
+            }
+        }
+
         beliInput.addEventListener('input', updateMargin);
         jualInput.addEventListener('input', updateMargin);
+        stokInput.addEventListener('input', checkZeroStock);
+
         updateMargin();
+        checkZeroStock();
     });
 </script>
 </body>
