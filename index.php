@@ -144,20 +144,6 @@ $today = new DateTimeImmutable('today');
 </head>
 <body>
 
-<!-- Header Khusus Cetak Dokumen Resmi -->
-<div class="print-only-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h2 class="mb-0 fw-bold">APOTEK SEHATMART</h2>
-            <p class="mb-0 text-muted small">Laporan Penataan & Status Inventaris Gudang Farmasi</p>
-        </div>
-        <div class="text-end small">
-            <div>Tanggal Cetak: <strong><?= date('d/m/Y H:i'); ?></strong></div>
-            <div>Penanggung Jawab: Apoteker Pengelola Apotek (APA)</div>
-        </div>
-    </div>
-</div>
-
 <nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav no-print">
     <div class="container">
         <a class="navbar-brand brand-mark" href="index.php">
@@ -505,21 +491,6 @@ $today = new DateTimeImmutable('today');
                     </table>
                 </div>
             </div>
-
-            <!-- Bagian Tanda Tangan Cetak Fisik -->
-            <div class="print-signatures">
-                <div>
-                    <p class="mb-5">Petugas Gudang / Logistik Farmasi,</p>
-                    <p class="fw-bold mt-5 mb-0">___________________________</p>
-                    <small>NIP / Identitas Petugas</small>
-                </div>
-                <div class="text-end">
-                    <p class="mb-5">Apoteker Pengelola Apotek (APA),</p>
-                    <p class="fw-bold mt-5 mb-0">___________________________</p>
-                    <small>SIPA: .......................................</small>
-                </div>
-            </div>
-
         </div>
     </section>
 </main>
