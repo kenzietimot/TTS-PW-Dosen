@@ -101,15 +101,6 @@ if ($kategori !== '' && !in_array($kategori, $allowedCategories, true)) {
     $kategori = '';
 }
 
-$activeNav = 'dashboard';
-if ($statusStok === 'menipis') {
-    $activeNav = 'menipis';
-} elseif (in_array($statusStok, ['kedaluwarsa', 'segera_kedaluwarsa'], true)) {
-    $activeNav = 'kedaluwarsa';
-} elseif ($statusStok !== 'semua' || $search !== '' || $kategori !== '') {
-    $activeNav = 'inventaris';
-}
-
 // 1. Ambil Ringkasan Metrik Inventaris (KPI Keseluruhan)
 $summaryQuery = "SELECT 
     COUNT(*) AS total_sku,
@@ -229,30 +220,19 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav no-print">
-    <div class="container">
-        <a class="navbar-brand brand-mark" href="index.php">
+<nav class="pharmacy-nav sticky-top no-print">
+    <div class="container pharmacy-nav-content">
+        <a class="brand-mark" href="index.php">
             <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
             <span>sehat<span class="brand-highlight">mart</span><small>SISTEM INVENTARIS APOTEK</small></span>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Buka navigasi">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNavigation">
-            <ul class="navbar-nav mx-auto nav-links">
-                <li class="nav-item"><a class="nav-link <?= $activeNav === 'dashboard' ? 'active' : ''; ?>" href="#ringkasan" data-nav-state="dashboard" <?= $activeNav === 'dashboard' ? 'aria-current="location"' : ''; ?>><i class="bi bi-speedometer2 me-1"></i> Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link <?= $activeNav === 'inventaris' ? 'active' : ''; ?>" href="#tabel-inventaris" data-nav-state="inventaris" <?= $activeNav === 'inventaris' ? 'aria-current="location"' : ''; ?>><i class="bi bi-table me-1"></i> Data Stok</a></li>
-                <li class="nav-item"><a class="nav-link <?= $activeNav === 'menipis' ? 'active' : ''; ?>" href="index.php?status_stok=menipis#tabel-inventaris" data-nav-state="menipis" <?= $activeNav === 'menipis' ? 'aria-current="location"' : ''; ?>><i class="bi bi-exclamation-triangle me-1"></i> Stok Menipis</a></li>
-                <li class="nav-item"><a class="nav-link <?= $activeNav === 'kedaluwarsa' ? 'active' : ''; ?>" href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris" data-nav-state="kedaluwarsa" <?= $activeNav === 'kedaluwarsa' ? 'aria-current="location"' : ''; ?>><i class="bi bi-calendar-event me-1"></i> Cek Kedaluwarsa</a></li>
-            </ul>
-            <div class="nav-actions">
-                <button class="icon-button" type="button" id="themeToggleBtn" title="Ganti Tema Tampilan" aria-label="Ganti tema tampilan">
-                    <i class="bi bi-moon-stars" id="themeIcon"></i>
-                </button>
-                <a href="tambah.php" class="btn btn-primary-green">
-                    <i class="bi bi-plus-lg"></i> Tambah Item
-                </a>
-            </div>
+        <div class="nav-actions">
+            <button class="icon-button" type="button" id="themeToggleBtn" title="Ganti Tema Tampilan" aria-label="Ganti tema tampilan">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
+            <a href="tambah.php" class="btn btn-primary-green">
+                <i class="bi bi-plus-lg"></i> Tambah Item
+            </a>
         </div>
     </div>
 </nav>
@@ -285,15 +265,6 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     <div class="kpi-hint"><i class="bi bi-check2-circle text-success"></i> Varian produk aktif</div>
                 </a>
 
-                <div class="kpi-card">
-                    <div class="kpi-header">
-                        <span class="kpi-label">Total Fisik Stok</span>
-                        <span class="kpi-icon icon-blue"><i class="bi bi-boxes"></i></span>
-                    </div>
-                    <div class="kpi-value"><?= number_format((int) $kpi['total_unit'], 0, ',', '.'); ?></div>
-                    <div class="kpi-hint"><i class="bi bi-archive text-info"></i> Seluruh unit di gudang</div>
-                </div>
-
                 <a href="index.php?status_stok=menipis#tabel-inventaris" class="kpi-card <?= $statusStok === 'menipis' ? 'active' : ''; ?>">
                     <div class="kpi-header">
                         <span class="kpi-label">Stok Menipis</span>
@@ -320,6 +291,15 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     <div class="kpi-value text-danger"><?= number_format((int) $kpi['total_exp_alert'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint text-danger"><i class="bi bi-bell"></i> &le; 90 hari / Expired</div>
                 </a>
+
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-label">Total Fisik Stok</span>
+                        <span class="kpi-icon icon-blue"><i class="bi bi-boxes"></i></span>
+                    </div>
+                    <div class="kpi-value"><?= number_format((int) $kpi['total_unit'], 0, ',', '.'); ?></div>
+                    <div class="kpi-hint"><i class="bi bi-archive text-info"></i> Seluruh unit di gudang</div>
+                </div>
 
                 <div class="kpi-card">
                     <div class="kpi-header">
@@ -419,7 +399,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <?php if ($kategori !== ''): ?> dalam kategori "<strong><?= $escape($kategori); ?></strong>"<?php endif; ?>
                         <?php if ($statusStok !== 'semua'): ?> dengan status "<strong><?= $escape(str_replace('_', ' ', $statusStok)); ?></strong>"<?php endif; ?>
                     </div>
-                    <div class="d-none d-md-flex align-items-center gap-3">
+                    <div class="table-meta-tip">
                         <span><i class="bi bi-info-circle text-success me-1"></i> Klik nama item untuk melihat deskripsi & catatan rak.</span>
                     </div>
                 </div>
@@ -685,47 +665,6 @@ function showItemDetail(item) {
     document.getElementById('detailEditBtn').href = `edit.php?id=${item.id}`;
     detailModal.show();
 }
-
-// Sinkronkan indikator navbar dengan bagian yang dibuka dan filter yang aktif.
-const sectionNavLinks = document.querySelectorAll('.nav-links .nav-link[data-nav-state]');
-function setActiveNav(state) {
-    sectionNavLinks.forEach((link) => {
-        const isActive = link.dataset.navState === state;
-        link.classList.toggle('active', isActive);
-        if (isActive) {
-            link.setAttribute('aria-current', 'location');
-        } else {
-            link.removeAttribute('aria-current');
-        }
-    });
-}
-
-function syncActiveNav() {
-    const url = new URL(window.location.href);
-    const status = url.searchParams.get('status_stok');
-
-    if (url.hash === '#ringkasan') {
-        setActiveNav('dashboard');
-    } else if (status === 'menipis') {
-        setActiveNav('menipis');
-    } else if (status === 'kedaluwarsa' || status === 'segera_kedaluwarsa') {
-        setActiveNav('kedaluwarsa');
-    } else if (url.hash === '#tabel-inventaris') {
-        setActiveNav('inventaris');
-    } else if ((status && status !== 'semua')
-        || url.searchParams.has('search')
-        || url.searchParams.has('kategori')) {
-        setActiveNav('inventaris');
-    } else {
-        setActiveNav('dashboard');
-    }
-}
-
-sectionNavLinks.forEach((link) => {
-    link.addEventListener('click', () => setActiveNav(link.dataset.navState));
-});
-window.addEventListener('hashchange', syncActiveNav);
-syncActiveNav();
 
 // Pengaturan Tema Redup / Normal
 const themeToggleBtn = document.getElementById('themeToggleBtn');

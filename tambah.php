@@ -207,10 +207,10 @@ if ($resHabis) {
                 <div>
                     <span class="header-eyebrow"><i class="bi bi-box-seam-fill"></i> Modul Inventaris</span>
                     <h1 class="h3 fw-bold mt-2 mb-1">Tambah Produk Apotek</h1>
-                    <p class="text-secondary small mb-0">Catat obat, vitamin, suplemen, alat kesehatan, dan perlengkapan medis baru ke dalam katalog.</p>
+                    <p class="page-subtitle">Catat obat, vitamin, suplemen, alat kesehatan, dan perlengkapan medis baru ke dalam katalog.</p>
                 </div>
                 <div class="d-none d-sm-block">
-                    <span class="badge bg-white text-success border border-success-subtle p-2 px-3 rounded-pill fw-semibold">
+                    <span class="page-badge">
                         <i class="bi bi-shield-check me-1"></i> Sistem Terproteksi
                     </span>
                 </div>
@@ -222,21 +222,21 @@ if ($resHabis) {
             <div class="out-of-stock-panel">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                     <h3><i class="bi bi-exclamation-triangle-fill text-warning"></i> Terdeteksi <?= count($produkStokHabis); ?> Produk Stok Kritis (Kurang dari 5 Unit)</h3>
-                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Perlu Tindakan</span>
+                    <span class="status-badge status-badge-warning">Perlu Tindakan</span>
                 </div>
                 <p class="mb-3">Produk berikut memiliki stok di bawah batas minimum. Lakukan <strong>Restok Kembali</strong> atau <strong>Hapus</strong> jika sudah tidak dipasarkan:</p>
                 <div class="d-flex flex-column gap-2">
                     <?php foreach ($produkStokHabis as $itemHabis): ?>
                         <?php
                         $stokItem = (int)$itemHabis['stok'];
-                        $stokBadgeClass = $stokItem === 0 ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis';
+                        $stokBadgeClass = $stokItem === 0 ? 'status-badge status-badge-danger' : 'status-badge status-badge-warning';
                         $stokLabel = $stokItem === 0 ? 'Stok Habis' : "Stok: {$stokItem}";
                         ?>
                         <div class="out-of-stock-item">
                             <div>
                                 <strong><?= $escape($itemHabis['nama_menu']); ?></strong>
-                                <span class="badge bg-light text-secondary border ms-1"><?= $escape($itemHabis['kategori']); ?></span>
-                                <span class="badge <?= $stokBadgeClass; ?> ms-1"><?= $stokLabel; ?> <?= $escape($itemHabis['satuan'] ?? 'pcs'); ?></span>
+                                <span class="soft-badge ms-1"><?= $escape($itemHabis['kategori']); ?></span>
+                                <span class="<?= $stokBadgeClass; ?> ms-1"><?= $stokLabel; ?> <?= $escape($itemHabis['satuan'] ?? 'pcs'); ?></span>
                             </div>
                             <div class="d-flex gap-2">
                                 <a href="edit.php?id=<?= (int)$itemHabis['id']; ?>" class="btn btn-sm btn-outline-success" title="Restok produk ini">
@@ -262,7 +262,7 @@ if ($resHabis) {
         <?php endif; ?>
 
         <?php if ($error !== ''): ?>
-            <div class="alert alert-danger shadow-sm border-0 rounded-3 mb-4" role="alert">
+            <div class="alert alert-danger shadow-sm rounded-3 mb-4" role="alert">
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-exclamation-triangle-fill fs-5"></i>
                     <div><?= $escape($error); ?></div>
@@ -295,7 +295,7 @@ if ($resHabis) {
                     <div class="col-md-4">
                         <label for="merek" class="form-label">
                             <span>Merek / Produsen</span>
-                            <span class="badge bg-light text-muted fw-normal border">Opsional</span>
+                            <span class="soft-badge">Opsional</span>
                         </label>
                         <input id="merek" name="merek" type="text" class="form-control" maxlength="100" value="<?= $escape($form['merek']); ?>" placeholder="Contoh: Kimia Farma, Kalbe">
                     </div>
@@ -331,7 +331,7 @@ if ($resHabis) {
                     <div class="col-12">
                         <label for="deskripsi" class="form-label">
                             <span>Deskripsi / Catatan Tambahan</span>
-                            <span class="badge bg-light text-muted fw-normal border">Opsional</span>
+                            <span class="soft-badge">Opsional</span>
                         </label>
                         <textarea id="deskripsi" name="deskripsi" class="form-control" rows="3" maxlength="2000" placeholder="Contoh: Indikasi umum, aturan pakai singkat, atau petunjuk penyimpanan khusus..."><?= $escape($form['deskripsi']); ?></textarea>
                         <div class="form-text">Maksimal 2.000 karakter.</div>
@@ -415,7 +415,7 @@ if ($resHabis) {
                     <div class="col-md-6">
                         <label for="tanggal_kedaluwarsa" class="form-label">
                             <span>Tanggal Kedaluwarsa Produk</span>
-                            <span class="badge bg-light text-muted fw-normal border">Opsional</span>
+                            <span class="soft-badge">Opsional</span>
                         </label>
                         <input id="tanggal_kedaluwarsa" name="tanggal_kedaluwarsa" type="date" class="form-control" value="<?= $escape($form['tanggal_kedaluwarsa']); ?>">
                         <div class="form-text">Pilih tanggal jika obat memiliki batas pakai (Expired Date).</div>
@@ -460,7 +460,7 @@ if ($resHabis) {
                         <i class="bi bi-exclamation-triangle-fill fs-3" id="policyModalIcon"></i>
                     </div>
                     <div>
-                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-1" id="policyBadgeLevel">Peringatan Inventaris (< 5 Unit)</span>
+                        <span class="status-badge status-badge-warning mb-1" id="policyBadgeLevel">Peringatan Inventaris (< 5 Unit)</span>
                         <h3 class="modal-title h5 fw-bold mb-0" id="stockPolicyModalLabel">Konfirmasi Kebijakan Stok</h3>
                     </div>
                 </div>
@@ -473,18 +473,18 @@ if ($resHabis) {
                 <div class="policy-product-summary mb-3 p-3">
                     <div class="row g-2 align-items-center">
                         <div class="col-sm-7">
-                            <span class="text-secondary small d-block">Nama Produk:</span>
+                            <span class="muted-copy d-block">Nama Produk:</span>
                             <strong class="fs-6" id="policyModalNamaProduk">-</strong>
-                            <span class="badge bg-light text-secondary border ms-1" id="policyModalKategori"></span>
+                            <span class="soft-badge ms-1" id="policyModalKategori"></span>
                         </div>
                         <div class="col-sm-5 text-sm-end">
-                            <span class="text-secondary small d-block">Kuantitas Terdeteksi:</span>
-                            <span class="badge" id="policyModalStokStatus">0 Unit</span>
+                            <span class="muted-copy d-block">Kuantitas Terdeteksi:</span>
+                            <span class="status-badge status-badge-warning" id="policyModalStokStatus">0 Unit</span>
                         </div>
                     </div>
                 </div>
 
-                <p class="text-secondary mb-3" id="policyModalPrompt">
+                <p class="muted-copy mb-3" id="policyModalPrompt">
                     Sistem mendeteksi bahwa stok awal produk ini <strong>kurang dari batas minimum 5 unit</strong>. Sesuai kebijakan inventaris SehatMart, silakan tentukan tindakan:
                 </p>
 
@@ -499,9 +499,9 @@ if ($resHabis) {
                                         <strong class="text-success d-flex align-items-center gap-1">
                                             <i class="bi bi-arrow-repeat"></i> Izinkan Restok Kembali
                                         </strong>
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Rekomendasi</span>
+                                        <span class="status-badge status-badge-success">Rekomendasi</span>
                                     </div>
-                                    <p class="small text-muted mb-0">
+                                    <p class="small muted-copy mb-0">
                                         Produk tetap tersimpan di katalog saat stok <span id="policyStockDisplay">0</span>, siap untuk di-restok ulang sewaktu-waktu.
                                     </p>
                                 </label>
@@ -518,9 +518,9 @@ if ($resHabis) {
                                         <strong class="text-danger d-flex align-items-center gap-1">
                                             <i class="bi bi-x-circle"></i> Siapkan Opsi Hapus
                                         </strong>
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Batal Simpan</span>
+                                        <span class="status-badge status-badge-danger">Batal Simpan</span>
                                     </div>
-                                    <p class="small text-muted mb-0">
+                                    <p class="small muted-copy mb-0">
                                         Batalkan penyimpanan ke katalog jika stok produk memang sudah habis atau tidak akan dipasarkan lagi.
                                     </p>
                                 </label>
@@ -531,10 +531,10 @@ if ($resHabis) {
             </div>
 
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
                     <i class="bi bi-pencil-square me-1"></i> Ubah Jumlah Stok
                 </button>
-                <button type="button" class="btn btn-success" id="btnExecutePolicy">
+                <button type="button" class="btn btn-submit-save" id="btnExecutePolicy">
                     <i class="bi bi-check2-circle me-1"></i> Simpan & Izinkan Restok
                 </button>
             </div>
@@ -652,7 +652,7 @@ if ($resHabis) {
             choiceRestok.checked = true;
             cardRestok.classList.add('selected-restok');
             cardHapus.classList.remove('selected-hapus');
-            btnExecutePolicy.className = 'btn btn-success';
+            btnExecutePolicy.className = 'btn btn-submit-save';
             btnExecutePolicy.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Simpan & Izinkan Restok';
         } else {
             choiceHapus.checked = true;
@@ -680,18 +680,18 @@ if ($resHabis) {
         if (stokVal === 0) {
             iconWrap.className = 'policy-modal-icon-wrap empty';
             iconEl.className = 'bi bi-exclamation-triangle-fill fs-3 text-danger';
-            badgeLevel.className = 'badge bg-danger-subtle text-danger border border-danger-subtle mb-1';
+            badgeLevel.className = 'status-badge status-badge-danger mb-1';
             badgeLevel.textContent = 'Stok Habis (0 Unit)';
             modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Habis (0 Unit)';
-            modalStatus.className = 'badge bg-danger';
+            modalStatus.className = 'status-badge status-badge-danger';
             modalStatus.textContent = '0 ' + (satuanSelect ? satuanSelect.value : 'unit') + ' (Habis)';
         } else {
             iconWrap.className = 'policy-modal-icon-wrap low';
             iconEl.className = 'bi bi-exclamation-triangle-fill fs-3 text-warning';
-            badgeLevel.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-1';
+            badgeLevel.className = 'status-badge status-badge-warning mb-1';
             badgeLevel.textContent = 'Stok Kritis / Menipis (< 5 Unit)';
             modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Kurang dari 5 Unit';
-            modalStatus.className = 'badge bg-warning text-dark';
+            modalStatus.className = 'status-badge status-badge-warning';
             modalStatus.textContent = `${stokVal} ` + (satuanSelect ? satuanSelect.value : 'unit') + ' (Menipis)';
         }
 
