@@ -652,6 +652,11 @@ a:hover {
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+.toolbar-form .form-select-sm {
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+    line-height: 1.5;
+}
+
 .toolbar-form .btn-apply-filter {
     height: 38px;
     min-height: 38px;
@@ -2096,6 +2101,17 @@ html.dim-theme .filter-pills .pill-tab.active .pill-badge {
 .dim-theme .form-control:focus, .dim-theme .form-select:focus {
     background-color: #2f4138;
     border-color: var(--green);
+}
+.dim-theme .toolbar-form .form-select-sm {
+    color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23eaf2ed' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+}
+.dim-theme .toolbar-form .form-select-sm option {
+    background-color: var(--surface-secondary);
+    color: var(--ink);
 }
 .dim-theme .input-group-text {
     background-color: #34463b;
