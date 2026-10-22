@@ -199,13 +199,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-light pharmacy-nav">
+<nav class="navbar navbar-expand-lg navbar-light sticky-top pharmacy-nav">
     <div class="container">
         <a class="navbar-brand brand-mark" href="index.php">
             <span class="brand-icon"><i class="bi bi-plus-lg"></i></span>
             <span>sehat<span class="brand-highlight">mart</span><small>INVENTARIS APOTEK</small></span>
         </a>
-        <a href="index.php" class="btn btn-outline-green"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Buka navigasi">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavigation">
+            <ul class="navbar-nav mx-auto nav-links">
+                <li class="nav-item"><a class="nav-link" href="index.php#ringkasan"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="index.php#tabel-inventaris"><i class="bi bi-table me-1"></i> Data Stok</a></li>
+                <li class="nav-item"><a class="nav-link" href="tambah.php"><i class="bi bi-plus-lg me-1"></i> Tambah Produk</a></li>
+                <li class="nav-item"><a class="nav-link active" href="edit.php?id=<?= (int) $id; ?>" aria-current="page"><i class="bi bi-pencil-square me-1"></i> Edit Produk</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="index.php" class="btn btn-outline-green"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
+            </div>
+        </div>
     </div>
 </nav>
 
