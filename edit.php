@@ -324,7 +324,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
                         <h3 class="modal-title h5 fw-bold mb-0" id="stockPolicyModalLabel">Konfirmasi Kebijakan Stok</h3>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                <button type="button" class="policy-modal-close" data-bs-dismiss="modal" aria-label="Tutup">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
             </div>
             <div class="modal-body py-4">
                 <!-- Info Box Produk -->
@@ -508,7 +510,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
 
         if (stokVal === 0) {
             iconWrap.className = 'policy-modal-icon-wrap empty';
-            iconEl.className = 'bi bi-x-circle-fill fs-3 text-danger';
+            iconEl.className = 'bi bi-exclamation-triangle-fill fs-3 text-danger';
             badgeLevel.className = 'badge bg-danger-subtle text-danger border border-danger-subtle mb-1';
             badgeLevel.textContent = 'Stok Habis (0 Unit)';
             modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Habis (0 Unit)';

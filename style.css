@@ -1136,20 +1136,13 @@ a:hover {
 .expiry-info-card strong { display: block; font-size: 0.84rem; color: var(--ink); margin-bottom: 2px; }
 .expiry-info-card p { margin: 0; font-size: 0.76rem; color: var(--muted); }
 
-.profit-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    margin-top: 6px;
+.profit-preview {
+    margin-top: 0.35rem;
 }
 
-.profit-badge.positive { background: var(--success-soft); color: #0f5124; border: 1px solid #bbf7d0; }
-.profit-badge.negative { background: var(--coral-soft);   color: #841910; border: 1px solid #fecaca; }
-.profit-badge.neutral  { background: #eef3f0;             color: var(--ink); border: 1px solid var(--line); }
+.profit-preview.positive { color: #0f5124; }
+.profit-preview.negative { color: #841910; }
+.profit-preview.neutral { color: var(--muted); }
 
 .stock-empty-alert {
     background: #fff5f3;
@@ -1883,6 +1876,45 @@ html.dim-theme .filter-pills .pill-tab.active .pill-badge {
     color: #d97706;
 }
 
+.custom-policy-modal .modal-header {
+    align-items: flex-start;
+}
+
+.custom-policy-modal .modal-header > .d-flex {
+    flex: 1;
+    min-width: 0;
+}
+
+.custom-policy-modal .modal-title {
+    overflow-wrap: anywhere;
+}
+
+.policy-modal-close {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 0.7rem;
+    background: var(--card-bg);
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1;
+    opacity: 1;
+    transition: all var(--transition-fast);
+}
+
+.policy-modal-close:hover {
+    border-color: var(--green);
+    background: var(--green-soft);
+    color: var(--green-dark);
+}
+
 .policy-product-summary {
     background: #f7faf8;
     border: 1px solid #e1ebe4;
@@ -2123,6 +2155,21 @@ html.dim-theme .filter-pills .pill-tab.active .pill-badge {
 .dim-theme .policy-modal-icon-wrap.low {
     background: #423214;
     color: #fbbf24;
+}
+
+.dim-theme .profit-preview.positive { color: #86efac !important; }
+.dim-theme .profit-preview.negative { color: #fda4af !important; }
+
+.dim-theme .policy-modal-close {
+    border-color: var(--line);
+    background: var(--card-bg);
+    color: var(--ink);
+}
+
+.dim-theme .policy-modal-close:hover {
+    border-color: var(--green);
+    background: var(--green-soft);
+    color: var(--green-dark);
 }
 
 .dim-theme .policy-product-summary {

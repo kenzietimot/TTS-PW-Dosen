@@ -371,9 +371,8 @@ if ($resHabis) {
                             <span class="input-group-text">Rp</span>
                             <input id="harga" name="harga" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['harga']); ?>" required>
                         </div>
-                        <div id="profitPreview" class="profit-badge neutral">
-                            <i class="bi bi-calculator"></i>
-                            <span>Margin keuntungan akan dihitung otomatis</span>
+                        <div id="profitPreview" class="form-text profit-preview neutral">
+                            Masukkan harga untuk melihat estimasi margin.
                         </div>
                     </div>
 
@@ -465,7 +464,9 @@ if ($resHabis) {
                         <h3 class="modal-title h5 fw-bold mb-0" id="stockPolicyModalLabel">Konfirmasi Kebijakan Stok</h3>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                <button type="button" class="policy-modal-close" data-bs-dismiss="modal" aria-label="Tutup">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
             </div>
             <div class="modal-body py-4">
                 <!-- Info Box Produk -->
@@ -592,8 +593,8 @@ if ($resHabis) {
         const jual = parseInt(jualInput.value, 10) || 0;
 
         if (beli <= 0 && jual <= 0) {
-            profitBadge.className = 'profit-badge neutral';
-            profitBadge.innerHTML = '<i class="bi bi-calculator"></i> <span>Masukkan harga untuk melihat margin</span>';
+            profitBadge.className = 'form-text profit-preview neutral';
+            profitBadge.textContent = 'Masukkan harga untuk melihat estimasi margin.';
             return;
         }
 
@@ -602,14 +603,14 @@ if ($resHabis) {
         const formatter = new Intl.NumberFormat('id-ID');
 
         if (selisih > 0) {
-            profitBadge.className = 'profit-badge positive';
-            profitBadge.innerHTML = `<i class="bi bi-arrow-up-circle-fill"></i> <span>Estimasi Margin: +Rp ${formatter.format(selisih)} (${persen}%)</span>`;
+            profitBadge.className = 'form-text profit-preview positive';
+            profitBadge.textContent = `Estimasi margin: +Rp ${formatter.format(selisih)} (${persen}%).`;
         } else if (selisih < 0) {
-            profitBadge.className = 'profit-badge negative';
-            profitBadge.innerHTML = `<i class="bi bi-arrow-down-circle-fill"></i> <span>Harga jual di bawah harga beli (-Rp ${formatter.format(Math.abs(selisih))})</span>`;
+            profitBadge.className = 'form-text profit-preview negative';
+            profitBadge.textContent = `Harga jual di bawah harga beli (-Rp ${formatter.format(Math.abs(selisih))}).`;
         } else {
-            profitBadge.className = 'profit-badge neutral';
-            profitBadge.innerHTML = `<i class="bi bi-dash-circle"></i> <span>Harga jual sama dengan harga beli (Impas)</span>`;
+            profitBadge.className = 'form-text profit-preview neutral';
+            profitBadge.textContent = 'Harga jual sama dengan harga beli (impas).';
         }
     }
 
@@ -678,7 +679,7 @@ if ($resHabis) {
 
         if (stokVal === 0) {
             iconWrap.className = 'policy-modal-icon-wrap empty';
-            iconEl.className = 'bi bi-x-circle-fill fs-3 text-danger';
+            iconEl.className = 'bi bi-exclamation-triangle-fill fs-3 text-danger';
             badgeLevel.className = 'badge bg-danger-subtle text-danger border border-danger-subtle mb-1';
             badgeLevel.textContent = 'Stok Habis (0 Unit)';
             modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Habis (0 Unit)';
