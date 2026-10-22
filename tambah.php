@@ -36,21 +36,21 @@ $form = [
     'harga' => '0',
     'stok' => '0',
     'tanggal_kedaluwarsa' => '',
-    'deskripsi' => '',
-    'opsi_stok_habis' => 'restok'
+    'deskripsi' => ''
 ];
 
 /*
- * Karena permintaan perubahan hanya pada tambah.php, kolom tambahan dibuat
- * otomatis jika belum tersedia. Struktur dasar tabel menu tetap dipakai.
- * File lain tidak perlu diganti untuk menyimpan data dari form ini.
+ * Kolom tambahan dibuat otomatis jika belum tersedia.
+ * Struktur dasar tabel menu tetap dipakai.
  */
 $kolomTambahan = [
     'merek' => "ALTER TABLE menu ADD COLUMN merek VARCHAR(100) NULL AFTER kategori",
     'satuan' => "ALTER TABLE menu ADD COLUMN satuan VARCHAR(30) NOT NULL DEFAULT 'pcs' AFTER merek",
     'harga_beli' => "ALTER TABLE menu ADD COLUMN harga_beli INT NOT NULL DEFAULT 0 AFTER satuan",
-    'tanggal_kedaluwarsa' => "ALTER TABLE menu ADD COLUMN tanggal_kedaluwarsa DATE NULL AFTER stok",
-    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER tanggal_kedaluwarsa"
+    'stok_minimum' => "ALTER TABLE menu ADD COLUMN stok_minimum INT NOT NULL DEFAULT 5 AFTER stok",
+    'tanggal_kedaluwarsa' => "ALTER TABLE menu ADD COLUMN tanggal_kedaluwarsa DATE NULL AFTER stok_minimum",
+    'nomor_batch' => "ALTER TABLE menu ADD COLUMN nomor_batch VARCHAR(100) NULL AFTER tanggal_kedaluwarsa",
+    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER nomor_batch"
 ];
 
 foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
@@ -155,9 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
     }
 }
 
-// Ambil data produk yang stoknya habis (0 unit) untuk opsi cepat Restok / Hapus
+// Ambil data produk yang stoknya kritis (< 5 unit) untuk notifikasi cepat Restok / Hapus
 $produkStokHabis = [];
-$resHabis = $conn->query("SELECT id, nama_menu, kategori, harga, satuan FROM menu WHERE stok <= 0 ORDER BY id DESC LIMIT 5");
+$resHabis = $conn->query("SELECT id, nama_menu, kategori, harga, satuan, stok FROM menu WHERE stok < 5 ORDER BY stok ASC, id DESC LIMIT 5");
 if ($resHabis) {
     $produkStokHabis = $resHabis->fetch_all(MYSQLI_ASSOC);
     $resHabis->free();
@@ -170,6 +170,15 @@ if ($resHabis) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f6faf7">
     <title>Tambah Produk - SehatMart</title>
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('sehatmart-dim') === 'true') {
+                    document.documentElement.classList.add('dim-theme');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -181,20 +190,13 @@ if ($resHabis) {
             <span class="brand-icon"><i class="bi bi-box-seam"></i></span>
             <span>sehat<span class="brand-highlight">mart</span><small>INVENTARIS APOTEK</small></span>
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Buka navigasi">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="mainNavigation">
-            <ul class="navbar-nav mx-auto nav-links">
-                <li class="nav-item"><a class="nav-link" href="index.php#ringkasan"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="index.php#tabel-inventaris"><i class="bi bi-table me-1"></i> Data Stok</a></li>
-                <li class="nav-item"><a class="nav-link active" href="tambah.php" aria-current="page"><i class="bi bi-plus-lg me-1"></i> Tambah Produk</a></li>
-            </ul>
-            <div class="nav-actions">
-                <a href="index.php" class="btn btn-outline-green">
-                    <i class="bi bi-arrow-left me-1"></i> Kembali ke Inventaris
-                </a>
-            </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="icon-button" type="button" id="themeToggleBtn" title="Ganti Tema Tampilan" aria-label="Ganti tema tampilan">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
+            <a href="index.php" class="btn btn-outline-green">
+                <i class="bi bi-arrow-left me-1"></i> Kembali ke Inventaris
+            </a>
         </div>
     </div>
 </nav>
@@ -217,20 +219,25 @@ if ($resHabis) {
         </div>
 
         <?php if (!empty($produkStokHabis)): ?>
-            <!-- Panel Produk Stok Habis Terdeteksi (Opsi Restok atau Hapus) -->
+            <!-- Panel Notifikasi Stok Kritis (< 5 unit) -->
             <div class="out-of-stock-panel">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                    <h3><i class="bi bi-exclamation-triangle-fill text-warning"></i> Perhatian: Terdapat <?= count($produkStokHabis); ?> Produk Stok Habis di Apotek</h3>
+                    <h3><i class="bi bi-exclamation-triangle-fill text-warning"></i> Terdeteksi <?= count($produkStokHabis); ?> Produk Stok Kritis (Kurang dari 5 Unit)</h3>
                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Perlu Tindakan</span>
                 </div>
-                <p class="mb-3">Jika produk yang ingin Anda input sudah ada di daftar obat habis ini, Anda dapat langsung memilih untuk me-<strong>Restok Kembali</strong> atau me-<strong>Hapus</strong> produk:</p>
+                <p class="mb-3">Produk berikut memiliki stok di bawah batas minimum. Lakukan <strong>Restok Kembali</strong> atau <strong>Hapus</strong> jika sudah tidak dipasarkan:</p>
                 <div class="d-flex flex-column gap-2">
                     <?php foreach ($produkStokHabis as $itemHabis): ?>
+                        <?php
+                        $stokItem = (int)$itemHabis['stok'];
+                        $stokBadgeClass = $stokItem === 0 ? 'bg-danger-subtle text-danger' : 'bg-warning-subtle text-warning-emphasis';
+                        $stokLabel = $stokItem === 0 ? 'Stok Habis' : "Stok: {$stokItem}";
+                        ?>
                         <div class="out-of-stock-item">
                             <div>
                                 <strong><?= $escape($itemHabis['nama_menu']); ?></strong>
                                 <span class="badge bg-light text-secondary border ms-1"><?= $escape($itemHabis['kategori']); ?></span>
-                                <span class="badge bg-danger-subtle text-danger ms-1">Stok: 0 <?= $escape($itemHabis['satuan'] ?? 'pcs'); ?></span>
+                                <span class="badge <?= $stokBadgeClass; ?> ms-1"><?= $stokLabel; ?> <?= $escape($itemHabis['satuan'] ?? 'pcs'); ?></span>
                             </div>
                             <div class="d-flex gap-2">
                                 <a href="edit.php?id=<?= (int)$itemHabis['id']; ?>" class="btn btn-sm btn-outline-success" title="Restok produk ini">
@@ -378,24 +385,8 @@ if ($resHabis) {
                         <input id="stok" name="stok" type="number" class="form-control" min="0" step="1" value="<?= $escape($form['stok']); ?>" required>
                         <div class="form-text">Jumlah kuantitas fisik produk yang tersedia saat ini.</div>
 
-                        <!-- Peringatan Dinamis jika Stok = 0 -->
-                        <div id="stokZeroAlert" class="stock-empty-alert" style="display: none;">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-                                <div>
-                                    <strong class="d-block text-danger">Stok diisi 0 (Stok Habis)</strong>
-                                    <span class="small text-muted">Produk berstatus habis. Pilih kebijakan tindakan:</span>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-2 mt-2 mt-sm-0">
-                                <button type="button" class="btn btn-sm btn-success" onclick="document.getElementById('opsiRestok').checked = true;">
-                                    <i class="bi bi-arrow-repeat me-1"></i> Siap Restok
-                                </button>
-                                <a href="index.php" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash3 me-1"></i> Batal / Hapus
-                                </a>
-                            </div>
-                        </div>
+                        <!-- Live Stock Status Notice (< 5 Unit / Habis) -->
+                        <div id="stokNoticeHelper" class="stock-status-notice mt-2" style="display: none;"></div>
                     </div>
 
                     <div class="col-md-6">
@@ -403,35 +394,7 @@ if ($resHabis) {
                             <i class="bi bi-box-seam text-success"></i>
                             <div>
                                 <strong>Pengelolaan Stok Otomatis</strong>
-                                <p>Kuantitas stok produk akan langsung tercatat di inventaris dan diperbarui saat terjadi transaksi.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pilihan Jika Stok Habis -->
-                    <div class="col-12 mt-3">
-                        <label class="form-label mb-1">
-                            <span>Pilihan Tindakan Jika Stok Habis (0 Unit)</span>
-                            <span class="badge bg-light text-muted fw-normal border">Kebijakan Inventaris</span>
-                        </label>
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <div class="form-check stock-action-card p-3 border rounded-3 bg-light-subtle h-100">
-                                    <input class="form-check-input ms-0 me-2" type="radio" name="opsi_stok_habis" id="opsiRestok" value="restok" <?= ($form['opsi_stok_habis'] ?? 'restok') === 'restok' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label w-100" for="opsiRestok">
-                                        <strong class="d-block text-success mb-1"><i class="bi bi-arrow-repeat me-1"></i> Izinkan Restok Kembali</strong>
-                                        <span class="small text-muted">Produk tetap tersimpan di katalog saat stok 0, siap untuk di-restok ulang sewaktu-waktu.</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check stock-action-card p-3 border rounded-3 bg-light-subtle h-100">
-                                    <input class="form-check-input ms-0 me-2" type="radio" name="opsi_stok_habis" id="opsiHapus" value="hapus" <?= ($form['opsi_stok_habis'] ?? '') === 'hapus' ? 'checked' : ''; ?>>
-                                    <label class="form-check-label w-100" for="opsiHapus">
-                                        <strong class="d-block text-danger mb-1"><i class="bi bi-trash3 me-1"></i> Siapkan Opsi Hapus</strong>
-                                        <span class="small text-muted">Tandai produk untuk langsung dihapus dari katalog jika stok sudah habis atau tidak dijual lagi.</span>
-                                    </label>
-                                </div>
+                                <p>Kuantitas stok produk akan langsung tercatat di inventaris. Sistem memantau batas kritis stok minimum (5 unit) secara otomatis.</p>
                             </div>
                         </div>
                     </div>
@@ -476,7 +439,7 @@ if ($resHabis) {
                 <a href="index.php" class="btn btn-cancel">
                     <i class="bi bi-arrow-left"></i> Batal
                 </a>
-                <button type="submit" class="btn btn-submit-save" <?= $schemaError !== '' ? 'disabled' : ''; ?>>
+                <button type="submit" class="btn btn-submit-save" id="btnSubmitForm" <?= $schemaError !== '' ? 'disabled' : ''; ?>>
                     <i class="bi bi-check2-circle"></i> Simpan Produk
                 </button>
             </div>
@@ -489,58 +452,290 @@ if ($resHabis) {
     </div>
 </main>
 
+<!-- MODAL KONFIRMASI KEBIJAKAN STOK (< 5 UNIT) -->
+<div class="modal fade" id="stockPolicyModal" tabindex="-1" aria-labelledby="stockPolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content custom-policy-modal">
+            <div class="modal-header border-0 pb-0">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="policy-modal-icon-wrap" id="policyModalIconWrap">
+                        <i class="bi bi-exclamation-triangle-fill fs-3" id="policyModalIcon"></i>
+                    </div>
+                    <div>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-1" id="policyBadgeLevel">Peringatan Inventaris (< 5 Unit)</span>
+                        <h3 class="modal-title h5 fw-bold mb-0" id="stockPolicyModalLabel">Konfirmasi Kebijakan Stok</h3>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body py-4">
+                <!-- Info Box Produk -->
+                <div class="policy-product-summary mb-3 p-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-sm-7">
+                            <span class="text-secondary small d-block">Nama Produk:</span>
+                            <strong class="fs-6" id="policyModalNamaProduk">-</strong>
+                            <span class="badge bg-light text-secondary border ms-1" id="policyModalKategori"></span>
+                        </div>
+                        <div class="col-sm-5 text-sm-end">
+                            <span class="text-secondary small d-block">Kuantitas Terdeteksi:</span>
+                            <span class="badge" id="policyModalStokStatus">0 Unit</span>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-secondary mb-3" id="policyModalPrompt">
+                    Sistem mendeteksi bahwa stok awal produk ini <strong>kurang dari batas minimum 5 unit</strong>. Sesuai kebijakan inventaris SehatMart, silakan tentukan tindakan:
+                </p>
+
+                <!-- 2 Pilihan Kebijakan -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="policy-choice-card selected-restok" id="cardRestok" onclick="selectPolicyChoice('restok')">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input mt-1" type="radio" name="modal_policy_choice" id="choiceRestok" value="restok" checked>
+                                <label class="form-check-label w-100 cursor-pointer" for="choiceRestok">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-success d-flex align-items-center gap-1">
+                                            <i class="bi bi-arrow-repeat"></i> Izinkan Restok Kembali
+                                        </strong>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Rekomendasi</span>
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        Produk tetap tersimpan di katalog saat stok <span id="policyStockDisplay">0</span>, siap untuk di-restok ulang sewaktu-waktu.
+                                    </p>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="policy-choice-card" id="cardHapus" onclick="selectPolicyChoice('hapus')">
+                            <div class="d-flex align-items-start gap-2">
+                                <input class="form-check-input mt-1" type="radio" name="modal_policy_choice" id="choiceHapus" value="hapus">
+                                <label class="form-check-label w-100 cursor-pointer" for="choiceHapus">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-danger d-flex align-items-center gap-1">
+                                            <i class="bi bi-x-circle"></i> Siapkan Opsi Hapus
+                                        </strong>
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Batal Simpan</span>
+                                    </div>
+                                    <p class="small text-muted mb-0">
+                                        Batalkan penyimpanan ke katalog jika stok produk memang sudah habis atau tidak akan dipasarkan lagi.
+                                    </p>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-pencil-square me-1"></i> Ubah Jumlah Stok
+                </button>
+                <button type="button" class="btn btn-success" id="btnExecutePolicy">
+                    <i class="bi bi-check2-circle me-1"></i> Simpan & Izinkan Restok
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const beliInput = document.getElementById('harga_beli');
-        const jualInput = document.getElementById('harga');
-        const profitBadge = document.getElementById('profitPreview');
-        const stokInput = document.getElementById('stok');
-        const stokZeroAlert = document.getElementById('stokZeroAlert');
-
-        function updateMargin() {
-            if (!beliInput || !jualInput || !profitBadge) return;
-            const beli = parseInt(beliInput.value, 10) || 0;
-            const jual = parseInt(jualInput.value, 10) || 0;
-
-            if (beli <= 0 && jual <= 0) {
-                profitBadge.className = 'profit-badge neutral';
-                profitBadge.innerHTML = '<i class="bi bi-calculator"></i> <span>Masukkan harga untuk melihat margin</span>';
-                return;
-            }
-
-            const selisih = jual - beli;
-            const persen = beli > 0 ? ((selisih / beli) * 100).toFixed(1) : 0;
-            const formatter = new Intl.NumberFormat('id-ID');
-
-            if (selisih > 0) {
-                profitBadge.className = 'profit-badge positive';
-                profitBadge.innerHTML = `<i class="bi bi-arrow-up-circle-fill"></i> <span>Estimasi Margin: +Rp ${formatter.format(selisih)} (${persen}%)</span>`;
-            } else if (selisih < 0) {
-                profitBadge.className = 'profit-badge negative';
-                profitBadge.innerHTML = `<i class="bi bi-arrow-down-circle-fill"></i> <span>Harga jual di bawah harga beli (-Rp ${formatter.format(Math.abs(selisih))})</span>`;
+    // Pengaturan Tema Redup / Normal
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = document.getElementById('themeIcon');
+    function applyTheme(isDim) {
+        document.body.classList.toggle('dim-theme', isDim);
+        document.documentElement.classList.toggle('dim-theme', isDim);
+        if (themeIcon) {
+            if (isDim) {
+                themeIcon.classList.remove('bi-moon-stars');
+                themeIcon.classList.add('bi-sun');
             } else {
-                profitBadge.className = 'profit-badge neutral';
-                profitBadge.innerHTML = `<i class="bi bi-dash-circle"></i> <span>Harga jual sama dengan harga beli (Impas)</span>`;
+                themeIcon.classList.remove('bi-sun');
+                themeIcon.classList.add('bi-moon-stars');
             }
         }
+    }
+    const isDimSaved = localStorage.getItem('sehatmart-dim') === 'true';
+    applyTheme(isDimSaved);
 
-        function checkZeroStock() {
-            if (!stokInput || !stokZeroAlert) return;
-            const stokVal = parseInt(stokInput.value, 10);
-            if (stokVal === 0 || stokInput.value.trim() === '0') {
-                stokZeroAlert.style.display = 'flex';
-            } else {
-                stokZeroAlert.style.display = 'none';
-            }
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const isNowDim = !document.body.classList.contains('dim-theme');
+            applyTheme(isNowDim);
+            localStorage.setItem('sehatmart-dim', String(isNowDim));
+        });
+    }
+
+    // Variabel Kebijakan Stok & Modal
+    let policyConfirmed = false;
+    let selectedPolicy = 'restok';
+    const formEl = document.querySelector('form');
+    const beliInput = document.getElementById('harga_beli');
+    const jualInput = document.getElementById('harga');
+    const profitBadge = document.getElementById('profitPreview');
+    const stokInput = document.getElementById('stok');
+    const namaInput = document.getElementById('nama_menu');
+    const kategoriSelect = document.getElementById('kategori');
+    const satuanSelect = document.getElementById('satuan');
+    const stokNoticeHelper = document.getElementById('stokNoticeHelper');
+    const stockPolicyModalEl = document.getElementById('stockPolicyModal');
+    const stockPolicyModal = new bootstrap.Modal(stockPolicyModalEl);
+    const btnExecutePolicy = document.getElementById('btnExecutePolicy');
+
+    function updateMargin() {
+        if (!beliInput || !jualInput || !profitBadge) return;
+        const beli = parseInt(beliInput.value, 10) || 0;
+        const jual = parseInt(jualInput.value, 10) || 0;
+
+        if (beli <= 0 && jual <= 0) {
+            profitBadge.className = 'profit-badge neutral';
+            profitBadge.innerHTML = '<i class="bi bi-calculator"></i> <span>Masukkan harga untuk melihat margin</span>';
+            return;
         }
 
-        beliInput.addEventListener('input', updateMargin);
-        jualInput.addEventListener('input', updateMargin);
-        stokInput.addEventListener('input', checkZeroStock);
+        const selisih = jual - beli;
+        const persen = beli > 0 ? ((selisih / beli) * 100).toFixed(1) : 0;
+        const formatter = new Intl.NumberFormat('id-ID');
 
-        updateMargin();
-        checkZeroStock();
+        if (selisih > 0) {
+            profitBadge.className = 'profit-badge positive';
+            profitBadge.innerHTML = `<i class="bi bi-arrow-up-circle-fill"></i> <span>Estimasi Margin: +Rp ${formatter.format(selisih)} (${persen}%)</span>`;
+        } else if (selisih < 0) {
+            profitBadge.className = 'profit-badge negative';
+            profitBadge.innerHTML = `<i class="bi bi-arrow-down-circle-fill"></i> <span>Harga jual di bawah harga beli (-Rp ${formatter.format(Math.abs(selisih))})</span>`;
+        } else {
+            profitBadge.className = 'profit-badge neutral';
+            profitBadge.innerHTML = `<i class="bi bi-dash-circle"></i> <span>Harga jual sama dengan harga beli (Impas)</span>`;
+        }
+    }
+
+    function checkStockLevel() {
+        if (!stokInput || !stokNoticeHelper) return;
+        const rawVal = stokInput.value.trim();
+        if (rawVal === '') {
+            stokNoticeHelper.style.display = 'none';
+            return;
+        }
+
+        const stokVal = parseInt(rawVal, 10);
+        if (isNaN(stokVal)) {
+            stokNoticeHelper.style.display = 'none';
+            return;
+        }
+
+        stokNoticeHelper.style.display = 'inline-flex';
+        if (stokVal === 0) {
+            stokNoticeHelper.className = 'stock-status-notice empty';
+            stokNoticeHelper.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> <span>Stok 0 Unit (Habis). Sistem mendeteksi barang kosong.</span> <button type="button" class="policy-trigger-btn" onclick="openStockPolicyModal(0)">Konfirmasi Kebijakan</button>`;
+        } else if (stokVal < 5) {
+            stokNoticeHelper.className = 'stock-status-notice low';
+            stokNoticeHelper.innerHTML = `<i class="bi bi-exclamation-circle-fill"></i> <span>Stok ${stokVal} Unit (Kurang dari batas 5 unit).</span> <button type="button" class="policy-trigger-btn" onclick="openStockPolicyModal(${stokVal})">Konfirmasi Kebijakan</button>`;
+        } else {
+            stokNoticeHelper.className = 'stock-status-notice safe';
+            stokNoticeHelper.innerHTML = `<i class="bi bi-check-circle-fill"></i> <span>Stok Aman (${stokVal} Unit)</span>`;
+        }
+    }
+
+    function selectPolicyChoice(choice) {
+        selectedPolicy = choice;
+        const choiceRestok = document.getElementById('choiceRestok');
+        const choiceHapus = document.getElementById('choiceHapus');
+        const cardRestok = document.getElementById('cardRestok');
+        const cardHapus = document.getElementById('cardHapus');
+
+        if (choice === 'restok') {
+            choiceRestok.checked = true;
+            cardRestok.classList.add('selected-restok');
+            cardHapus.classList.remove('selected-hapus');
+            btnExecutePolicy.className = 'btn btn-success';
+            btnExecutePolicy.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Simpan & Izinkan Restok';
+        } else {
+            choiceHapus.checked = true;
+            cardHapus.classList.add('selected-hapus');
+            cardRestok.classList.remove('selected-restok');
+            btnExecutePolicy.className = 'btn btn-danger';
+            btnExecutePolicy.innerHTML = '<i class="bi bi-x-circle me-1"></i> Batalkan & Kembali ke Katalog';
+        }
+    }
+
+    function openStockPolicyModal(stokVal) {
+        const iconWrap = document.getElementById('policyModalIconWrap');
+        const iconEl = document.getElementById('policyModalIcon');
+        const badgeLevel = document.getElementById('policyBadgeLevel');
+        const modalTitle = document.getElementById('stockPolicyModalLabel');
+        const modalNama = document.getElementById('policyModalNamaProduk');
+        const modalKategori = document.getElementById('policyModalKategori');
+        const modalStatus = document.getElementById('policyModalStokStatus');
+        const stockDisplay = document.getElementById('policyStockDisplay');
+
+        modalNama.textContent = (namaInput && namaInput.value.trim()) ? namaInput.value.trim() : 'Produk Baru';
+        modalKategori.textContent = (kategoriSelect && kategoriSelect.value) ? kategoriSelect.value : 'Inventaris';
+        stockDisplay.textContent = String(stokVal);
+
+        if (stokVal === 0) {
+            iconWrap.className = 'policy-modal-icon-wrap empty';
+            iconEl.className = 'bi bi-x-circle-fill fs-3 text-danger';
+            badgeLevel.className = 'badge bg-danger-subtle text-danger border border-danger-subtle mb-1';
+            badgeLevel.textContent = 'Stok Habis (0 Unit)';
+            modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Habis (0 Unit)';
+            modalStatus.className = 'badge bg-danger';
+            modalStatus.textContent = '0 ' + (satuanSelect ? satuanSelect.value : 'unit') + ' (Habis)';
+        } else {
+            iconWrap.className = 'policy-modal-icon-wrap low';
+            iconEl.className = 'bi bi-exclamation-triangle-fill fs-3 text-warning';
+            badgeLevel.className = 'badge bg-warning-subtle text-warning-emphasis border border-warning-subtle mb-1';
+            badgeLevel.textContent = 'Stok Kritis / Menipis (< 5 Unit)';
+            modalTitle.textContent = 'Konfirmasi Kebijakan: Stok Kurang dari 5 Unit';
+            modalStatus.className = 'badge bg-warning text-dark';
+            modalStatus.textContent = `${stokVal} ` + (satuanSelect ? satuanSelect.value : 'unit') + ' (Menipis)';
+        }
+
+        // Reset default ke Restok
+        selectPolicyChoice('restok');
+        stockPolicyModal.show();
+    }
+
+    // Eksekusi Tindakan Modal
+    btnExecutePolicy.addEventListener('click', function () {
+        if (selectedPolicy === 'restok') {
+            policyConfirmed = true;
+            stockPolicyModal.hide();
+            formEl.submit();
+        } else {
+            // Pilihan Batal / Hapus pada tambah.php: Batalkan penambahan produk
+            window.location.href = 'index.php';
+        }
     });
+
+    // Intersepsi Form Submit jika Stok < 5
+    formEl.addEventListener('submit', function (e) {
+        if (policyConfirmed) return; // Lanjutkan jika sudah dikonfirmasi di modal
+
+        const rawVal = stokInput ? stokInput.value.trim() : '';
+        const stokVal = parseInt(rawVal, 10);
+
+        if (!isNaN(stokVal) && stokVal < 5) {
+            e.preventDefault();
+            openStockPolicyModal(stokVal);
+        }
+    });
+
+    // Event Listener Input
+    if (beliInput) beliInput.addEventListener('input', updateMargin);
+    if (jualInput) jualInput.addEventListener('input', updateMargin);
+    if (stokInput) {
+        stokInput.addEventListener('input', checkStockLevel);
+        stokInput.addEventListener('change', checkStockLevel);
+    }
+
+    // Inisialisasi awal
+    updateMargin();
+    checkStockLevel();
 </script>
 </body>
 </html>

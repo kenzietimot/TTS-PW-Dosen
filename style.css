@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    SehatMart — Sistem Inventaris Apotek (Unified Professional Design System)
    CSS Refactored based on UI/UX Principles, WCAG 2.2 AA & Accessibility
    ========================================================================== */
@@ -1061,9 +1061,9 @@ a:hover {
 
 .footer-content p, .footer-content > span { margin: 0; color: var(--muted); font-size: 0.75rem; }
 
-/* --------------------------------------------------------------------------
-   8. Dark Mode Contrast and Component Overrides (.dim-theme)
-   -------------------------------------------------------------------------- */
+/* Dim / Dark Theme */
+html.dim-theme,
+body.dim-theme,
 .dim-theme {
     color-scheme: dark;
     --surface-bg: #111a14;
@@ -1187,331 +1187,259 @@ a:hover {
 
 .dim-theme .hero-title-area h1,
 .dim-theme .kpi-value,
-.dim-theme .product-name,
-.dim-theme .section-title,
-.dim-theme .modal-title,
-.dim-theme .inventory-empty h3,
-.dim-theme h1,
-.dim-theme h2,
-.dim-theme h3,
-.dim-theme h4,
-.dim-theme h5,
-.dim-theme h6 {
-    color: var(--ink);
+.dim-theme .product-name {
+    color: #e5f1ea !important;
 }
-
-.dim-theme .hero-title-area p,
-.dim-theme .section-desc,
-.dim-theme .kpi-label,
-.dim-theme .kpi-hint,
-.dim-theme .product-brand,
-.dim-theme .price-buy,
-.dim-theme .stock-level small,
-.dim-theme .form-text,
-.dim-theme .footnote-tip,
-.dim-theme .footer-content p,
-.dim-theme .footer-content > span,
-.dim-theme .inventory-empty p,
-.dim-theme .text-body-secondary,
-.dim-theme .text-secondary,
-.dim-theme .text-muted {
-    color: var(--muted) !important;
-}
-
-.dim-theme .form-label {
-    color: var(--ink);
-}
-
-.dim-theme .table-header-meta strong {
-    color: var(--ink);
-}
-
-.dim-theme .header-eyebrow,
-.dim-theme .section-icon-badge {
-    background-color: var(--green-soft);
-    border-color: var(--line-strong);
-    color: var(--green-dark);
-}
-
-.dim-theme .kpi-card.active {
-    background-color: #1d382b;
-    border-color: var(--green);
-    box-shadow: var(--focus-ring);
-}
-
-.dim-theme .pill-badge {
-    background-color: #294435;
-    color: var(--ink);
-}
-
-.dim-theme .pill-tab.active {
-    background-color: #176c49;
-    border-color: #4dba80;
-    color: #ffffff;
-}
-
-.dim-theme .pill-tab.active .pill-badge {
-    background-color: rgba(255, 255, 255, 0.18);
-    color: #ffffff;
-}
-
-/* Dark Mode Form Inputs & Select Controls */
 .dim-theme .search-input-wrap input,
-.dim-theme .form-select-sm,
-.dim-theme .form-control,
-.dim-theme .form-select {
-    background-color: var(--control-bg);
-    color: var(--ink);
-    border-color: var(--control-border);
+.dim-theme .form-select-sm {
+    background: #1a2820;
+    color: #dbe7e1;
+    border-color: #2d3e34;
 }
-
-.dim-theme .search-input-wrap input:focus,
-.dim-theme .form-select-sm:focus,
-.dim-theme .form-control:focus,
-.dim-theme .form-select:focus {
-    background-color: #16241c;
-    border-color: var(--green);
-    color: var(--ink);
-    box-shadow: var(--focus-ring);
+.dim-theme .inventory-table thead,
+.dim-theme .table-header-meta {
+    background: #263a2e;
+    color: #a4b7ad;
 }
-
-.dim-theme .search-input-wrap input::placeholder,
-.dim-theme .form-control::placeholder {
-    color: #afc2b6;
-    opacity: 1;
-}
-
-.dim-theme .form-control:disabled,
-.dim-theme .form-select:disabled,
-.dim-theme .search-input-wrap input:disabled {
-    background-color: #202d25;
-    color: #91a69a;
-    border-color: var(--line);
-    opacity: 1;
-}
-
-.dim-theme select option {
-    background-color: var(--control-bg);
-    color: var(--ink);
-}
-
-.dim-theme .input-group-text {
-    background-color: var(--surface-secondary);
-    border-color: var(--control-border);
-    color: var(--green);
-}
-
-/* Dark Mode Table Enhancements */
-.dim-theme .inventory-table {
-    --bs-table-color: var(--ink);
-    --bs-table-bg: var(--card-bg);
-    --bs-table-border-color: var(--line);
-    --bs-table-striped-bg: #1d2c23;
-    --bs-table-striped-color: var(--ink);
-    --bs-table-hover-bg: #24382d;
-    --bs-table-hover-color: var(--ink);
-    color: var(--ink);
-}
-
-.dim-theme .inventory-table thead {
-    --bs-table-bg: var(--table-head-bg);
-    --bs-table-color: var(--ink);
-    background-color: var(--table-head-bg);
-    color: var(--ink);
-}
-
-.dim-theme .inventory-table th {
-    color: var(--ink);
-}
-
-.dim-theme .table-header-meta,
-.dim-theme .modal-header,
-.dim-theme .modal-footer,
-.dim-theme .form-actions-footer {
-    background-color: var(--surface-secondary);
-    color: var(--ink);
-}
-
 .dim-theme .inventory-table td {
-    border-color: var(--line);
+    border-color: #26382e;
 }
-
 .dim-theme .inventory-table tbody tr:hover {
-    background-color: var(--table-row-hover-bg);
+    background: #23352a;
 }
-
-.dim-theme .inventory-table tbody tr:hover > * {
-    background-color: var(--table-row-hover-bg);
-    color: var(--ink);
-}
-
-.dim-theme .table-responsive {
-    color: var(--ink);
-}
-
 .dim-theme .batch-tag {
-    background: #24382d;
-    color: var(--ink);
+    background: #293d31;
+    color: #b7cebf;
 }
 
-.dim-theme .table-category {
-    background-color: var(--green-soft);
-    color: var(--green-dark);
+/* Responsive adjustments */
+@media (max-width: 1199.98px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .toolbar-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 767.98px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .toolbar-form { grid-template-columns: 1fr; }
+    .hero-title-area { flex-direction: column; align-items: flex-start; }
+    .hero-actions { width: 100%; }
+    .hero-actions .btn { flex: 1; }
+    .footer-content { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+@media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr; }
 }
 
-.dim-theme .stock-level {
-    color: var(--ink);
+/* Print Styles for Official Inventory Sheet */
+@media print {
+    body { background: white; color: black; font-size: 11pt; }
+    .pharmacy-nav, .hero-actions, .filter-pills, .inventory-toolbar, .action-buttons, .site-footer, .no-print {
+        display: none !important;
+    }
+    .inventory-hero {
+        background: transparent !important;
+        border: 0 !important;
+        padding: 0 0 15px 0 !important;
+    }
+    .kpi-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        margin-bottom: 20px;
+    }
+    .kpi-card {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        padding: 8px !important;
+    }
+    .inventory-table-container {
+        border: 1px solid #000 !important;
+        box-shadow: none !important;
+    }
+    .inventory-table th, .inventory-table td {
+        border: 1px solid #ddd !important;
+        padding: 6px 8px !important;
+    }
+    .print-only-header {
+        display: block !important;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+    }
+    .print-signatures {
+        display: flex !important;
+        justify-content: space-between;
+        margin-top: 40px;
+        page-break-inside: avoid;
+    }
+}
+.print-only-header, .print-signatures { display: none; }
+
+/* ==========================================================================
+   Formulir Produk Apotek (tambah.php & edit.php)
+   ========================================================================== */
+.form-page-wrapper {
+    max-width: 880px;
+    margin: 0 auto;
 }
 
-.dim-theme .price-sell {
-    color: var(--green);
+.page-header-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f2f8f4 100%);
+    border: 1px solid var(--line, #e4ebe5);
+    border-radius: 18px;
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 4px 20px rgba(38, 123, 88, 0.04);
 }
 
-/* Dark Mode Status Badges */
-.dim-theme .stock-badge-safe,
-.dim-theme .exp-safe,
-.dim-theme .profit-badge.positive {
-    background-color: var(--success-soft);
-    border-color: #28613d;
-    color: #8ee6a8;
+.header-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: var(--green-soft, #e7f3eb);
+    color: var(--green, #267b58);
+    border: 1px solid #d5e9dc;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
-.dim-theme .stock-badge-warn,
-.dim-theme .exp-warning {
-    background-color: var(--amber-soft);
-    border-color: #765824;
-    color: #ffdc7a;
+.main-form-card {
+    background: #ffffff;
+    border: 1px solid var(--line, #e4ebe5);
+    border-radius: 20px;
+    box-shadow: 0 12px 36px rgba(24, 85, 61, 0.06);
+    overflow: hidden;
 }
 
-.dim-theme .stock-badge-danger,
-.dim-theme .exp-danger,
-.dim-theme .profit-badge.negative {
-    background-color: var(--coral-soft);
-    border-color: #753936;
-    color: #ffaaa3;
+.form-section {
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid #edf2ee;
+    transition: background-color 0.2s ease;
 }
 
-.dim-theme .profit-badge.neutral {
-    background-color: var(--surface-secondary);
-    border-color: var(--line);
-    color: var(--ink);
+.form-section:last-of-type {
+    border-bottom: none;
 }
 
-.dim-theme .form-section {
-    border-color: var(--line);
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 1.5rem;
 }
 
-.dim-theme .expiry-info-card {
-    background-color: #1d3025;
-    border-color: var(--line-strong);
+.section-icon-badge {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--green-soft, #e7f3eb);
+    color: var(--green, #267b58);
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    border: 1px solid #d4e7db;
 }
 
-.dim-theme .stock-empty-alert {
-    background-color: #351f1d;
-    border-color: #8d4841;
+.section-title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 750;
+    color: var(--ink, #21372d);
+    letter-spacing: -0.2px;
 }
 
-.dim-theme .out-of-stock-panel {
-    background-color: #302819;
-    border-color: #765824;
-    border-left-color: var(--amber);
+.section-desc {
+    margin: 2px 0 0 0;
+    font-size: 0.82rem;
+    color: var(--muted, #738078);
 }
 
-.dim-theme .out-of-stock-panel h3,
-.dim-theme .out-of-stock-panel p {
-    color: #ffdc7a;
+.form-label {
+    font-size: 0.86rem;
+    font-weight: 650;
+    color: #2e4337;
+    margin-bottom: 0.45rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.dim-theme .out-of-stock-item {
-    background-color: #28271d;
-    border-color: #655c31;
+.form-label .required-star {
+    color: #dc3545;
+    margin-left: 2px;
 }
 
-/* Dark Mode Buttons */
-.dim-theme .btn-cancel,
-.dim-theme .btn-outline-secondary {
-    background: var(--control-bg);
-    border-color: var(--control-border);
-    color: var(--ink);
+.form-control, .form-select {
+    border: 1.5px solid #d4ded7;
+    border-radius: 11px;
+    padding: 0.65rem 0.95rem;
+    font-size: 0.92rem;
+    color: var(--ink, #21372d);
+    background-color: #ffffff;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
-.dim-theme .btn-cancel:hover,
-.dim-theme .btn-outline-secondary:hover {
-    background: var(--surface-secondary);
-    border-color: var(--line-strong);
-    color: var(--ink);
+.form-control:hover, .form-select:hover {
+    border-color: #b8ccbe;
 }
 
-.dim-theme .btn-outline-green {
-    background: var(--control-bg);
-    border-color: var(--green);
-    color: var(--green-dark);
+.form-control:focus, .form-select:focus {
+    border-color: var(--green, #267b58);
+    box-shadow: 0 0 0 4px rgba(38, 123, 88, 0.12);
+    background-color: #ffffff;
 }
 
-.dim-theme .btn-outline-green:hover {
-    background: var(--green-soft);
-    border-color: var(--green);
-    color: var(--green-dark);
+.input-group-text {
+    background-color: #f4f8f5;
+    border: 1.5px solid #d4ded7;
+    border-right: none;
+    color: var(--green, #267b58);
+    font-weight: 700;
+    font-size: 0.88rem;
+    border-radius: 11px 0 0 11px;
+    padding: 0 0.9rem;
 }
 
-.dim-theme .btn-primary-green,
-.dim-theme .btn-submit-save,
-.dim-theme .brand-icon {
-    background-color: #176c49;
-    border-color: #4dba80;
-    color: #ffffff !important;
+.input-group .form-control {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 
-.dim-theme .btn-primary-green:hover,
-.dim-theme .btn-submit-save:hover:not(:disabled) {
-    background-color: #218455;
-    border-color: #70d69b;
-    color: #ffffff !important;
+.input-group:focus-within .input-group-text {
+    border-color: var(--green, #267b58);
 }
 
-.dim-theme .btn-light-green {
-    background-color: var(--green-soft);
-    border-color: var(--line-strong);
-    color: var(--green-dark);
+.form-text {
+    color: var(--muted, #738078);
+    font-size: 0.77rem;
+    margin-top: 0.35rem;
 }
 
-.dim-theme .btn-outline-success {
-    color: #8ee6a8;
-    border-color: #4dba80;
+.expiry-info-card {
+    background: linear-gradient(135deg, #f7faf8 0%, #edf5f0 100%);
+    border: 1px solid #d9e8de;
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    height: 100%;
 }
 
-.dim-theme .btn-outline-success:hover {
-    background-color: #176c49;
-    border-color: #70d69b;
-    color: #ffffff;
+.expiry-info-card i {
+    color: var(--green, #267b58);
+    font-size: 1.3rem;
+    line-height: 1.2;
+    flex-shrink: 0;
 }
 
-.dim-theme .btn-outline-danger {
-    color: #ffaaa3;
-    border-color: #a95650;
-}
-
-.dim-theme .btn-outline-danger:hover {
-    background-color: #78302b;
-    border-color: #ffaaa3;
-    color: #ffffff;
-}
-
-/* Modals & Dialogs in Dark Mode */
-.dim-theme .modal-header,
-.dim-theme .modal-footer {
-    border-color: var(--line);
-}
-
-.dim-theme .modal-body,
-.dim-theme .modal-title {
-    color: var(--ink);
-}
-
-.dim-theme .modal-body .bg-light {
-    background-color: var(--surface-secondary) !important;
-    border-color: var(--line) !important;
-    color: var(--ink) !important;
+.expiry-info-card strong {
+    display: block;
+    font-size: 0.86rem;
+    color: var(--ink, #21372d);
+    margin-bottom: 2px;
 }
 
 .dim-theme .stock-action-card {
@@ -1548,222 +1476,427 @@ a:hover {
     opacity: 1;
 }
 
-/* Override Bootstrap Utility Conflicts in Dark Mode */
-.dim-theme .bg-light,
-.dim-theme .bg-light-subtle {
-    background-color: var(--surface-secondary) !important;
+/* Live Stock Status Notice (under stock input) */
+.stock-status-notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
+    animation: fadeInSlide 0.25s ease-out;
+}
+.stock-status-notice.empty {
+    background: #fff1f0;
+    color: #cf222e;
+    border: 1px solid #ffd0cc;
+}
+.stock-status-notice.low {
+    background: #fff8eb;
+    color: #b45309;
+    border: 1px solid #fed7aa;
+}
+.stock-status-notice.safe {
+    background: #ecfdf3;
+    color: #027a48;
+    border: 1px solid #abefc6;
+}
+.stock-status-notice .policy-trigger-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.84rem;
+    color: inherit;
+    margin-left: 4px;
+}
+.stock-status-notice .policy-trigger-btn:hover {
+    opacity: 0.8;
 }
 
-.dim-theme .bg-white {
-    background-color: var(--card-bg) !important;
+/* Modal Kebijakan Inventaris Pop-up */
+.custom-policy-modal {
+    border-radius: 18px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+}
+.policy-modal-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.policy-modal-icon-wrap.empty {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.policy-modal-icon-wrap.low {
+    background: #fef3c7;
+    color: #d97706;
 }
 
-.dim-theme .bg-success-subtle {
-    background-color: #143823 !important;
+.policy-product-summary {
+    background: #f7faf8;
+    border: 1px solid #e1ebe4;
+    border-radius: 12px;
 }
 
-.dim-theme .bg-warning-subtle {
-    background-color: #3a2e16 !important;
+.policy-choice-card {
+    border: 2px solid #e2ece5;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 100%;
+    position: relative;
+}
+.policy-choice-card:hover {
+    border-color: #9ec5ad;
+    background: #f8fcf9;
+}
+.policy-choice-card.selected-restok {
+    border-color: #267b58 !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 4px 14px rgba(38, 123, 88, 0.12);
+}
+.policy-choice-card.selected-hapus {
+    border-color: #dc2626 !important;
+    background: #fef2f2 !important;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.12);
 }
 
-.dim-theme .bg-danger-subtle {
-    background-color: #3b1c1c !important;
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.dim-theme .text-dark,
-.dim-theme .text-body {
-    color: var(--ink) !important;
+/* Panel Produk Stok Habis Terdeteksi */
+.out-of-stock-panel {
+    background: #ffffff;
+    border: 1px solid #fed7aa;
+    border-left: 5px solid #ea580c;
+    border-radius: 16px;
+    padding: 1.35rem 1.6rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 4px 18px rgba(234, 88, 12, 0.06);
+}
+.out-of-stock-panel h3 {
+    font-size: 1.02rem;
+    font-weight: 750;
+    color: #9a3412;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.out-of-stock-panel p {
+    font-size: 0.82rem;
+    color: #7c2d12;
+    margin: 0;
+    line-height: 1.5;
+}
+.out-of-stock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 14px;
+    background: #fffaf5;
+    border: 1px solid #fed7aa;
+    border-radius: 11px;
+    transition: background-color 0.18s ease;
+}
+.out-of-stock-item:hover {
+    background: #fff5eb;
 }
 
-.dim-theme .text-success {
-    color: #8ee6a8 !important;
+.form-actions-footer {
+    background: #fafcfa;
+    border-top: 1px solid #edf2ee;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
 
-.dim-theme .text-warning,
-.dim-theme .text-warning-emphasis {
-    color: #ffdc7a !important;
+.btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 1.5rem;
+    border: 1.5px solid #d4ded7;
+    border-radius: 11px;
+    background: #ffffff;
+    color: #4a5c52;
+    font-size: 0.9rem;
+    font-weight: 650;
+    text-decoration: none;
+    transition: all 0.2s ease;
 }
 
-.dim-theme .text-danger {
-    color: #ffaaa3 !important;
+.btn-cancel:hover {
+    background: #f0f4f1;
+    border-color: #bccbc0;
+    color: #21372d;
 }
 
-.dim-theme .text-info {
-    color: #8bdcff !important;
+.btn-submit-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 1.75rem;
+    border: 1px solid var(--green, #267b58);
+    border-radius: 11px;
+    background: var(--green, #267b58);
+    color: #ffffff;
+    font-size: 0.92rem;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(38, 123, 88, 0.22);
+    transition: all 0.2s ease;
 }
 
-.dim-theme .text-white {
-    color: #ffffff !important;
+.btn-submit-save:hover:not(:disabled) {
+    background: var(--green-dark, #18553d);
+    border-color: var(--green-dark, #18553d);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(38, 123, 88, 0.3);
+    color: #ffffff;
 }
 
-.dim-theme .border {
-    border-color: var(--line) !important;
+.btn-submit-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.dim-theme .border-success-subtle {
-    border-color: #28613d !important;
+.footnote-tip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #7b8b82;
+    font-size: 0.8rem;
+    margin-top: 1rem;
+    padding: 0 0.5rem;
 }
 
-.dim-theme .border-warning-subtle {
-    border-color: #765824 !important;
+/* Dark mode theme support for form components */
+.dim-theme .page-header-card {
+    background: #293831;
+    border-color: #3b4b42;
+}
+.dim-theme .header-eyebrow {
+    background: #34463b;
+    border-color: #435b4c;
+    color: #88c7a2;
+}
+.dim-theme .main-form-card {
+    background: #25332c;
+    border-color: #3b4b42;
+}
+.dim-theme .form-section {
+    border-color: #33433a;
+}
+.dim-theme .section-title {
+    color: #e7eee9;
+}
+.dim-theme .form-label {
+    color: #cdd9d1;
+}
+.dim-theme .form-control, .dim-theme .form-select {
+    background-color: #2b3b33;
+    border-color: #3f5247;
+    color: #e7eee9;
+}
+.dim-theme .form-control:focus, .dim-theme .form-select:focus {
+    background-color: #2f4138;
+    border-color: var(--green);
+}
+.dim-theme .input-group-text {
+    background-color: #34463b;
+    border-color: #3f5247;
+    color: #88c7a2;
+}
+.dim-theme .expiry-info-card {
+    background: #2b3a32;
+    border-color: #3d5045;
+}
+.dim-theme .expiry-info-card strong {
+    color: #e7eee9;
+}
+/* Policy Modal & Notice Dim Theme Support */
+.dim-theme .stock-status-notice.empty {
+    background: #3a1f1d;
+    color: #ff8b87;
+    border-color: #632d29;
+}
+.dim-theme .stock-status-notice.low {
+    background: #3a2e19;
+    color: #f6c065;
+    border-color: #5c451f;
+}
+.dim-theme .stock-status-notice.safe {
+    background: #1b3829;
+    color: #7ee0ad;
+    border-color: #2a523c;
 }
 
-.dim-theme .border-danger-subtle {
-    border-color: #753936 !important;
+.dim-theme .modal-content,
+.dim-theme .custom-modal,
+.dim-theme .custom-policy-modal {
+    background-color: #1e2c24 !important;
+    color: #e2ede7 !important;
+    border: 1px solid #334439 !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5) !important;
+}
+.dim-theme .modal-header {
+    border-bottom-color: #28392f !important;
+}
+.dim-theme .modal-footer {
+    border-top-color: #28392f !important;
+    background-color: #18231d !important;
+}
+.dim-theme .modal-title {
+    color: #eaf3ee !important;
+}
+.dim-theme .btn-close {
+    filter: invert(1) grayscale(100%) brightness(180%);
 }
 
-.dim-theme .form-control:focus-visible,
-.dim-theme .form-select:focus-visible,
-.dim-theme .form-select-sm:focus-visible,
-.dim-theme .search-input-wrap input:focus-visible,
-.dim-theme .btn:focus-visible,
-.dim-theme .icon-button:focus-visible,
-.dim-theme .table-action:focus-visible,
-.dim-theme .nav-links .nav-link:focus-visible {
-    outline: 2px solid var(--line-focus);
-    outline-offset: 2px;
+.dim-theme .policy-modal-icon-wrap.empty {
+    background: #451a1a;
+    color: #f87171;
+}
+.dim-theme .policy-modal-icon-wrap.low {
+    background: #423214;
+    color: #fbbf24;
 }
 
-/* --------------------------------------------------------------------------
-   9. Responsive Breakpoints
-   -------------------------------------------------------------------------- */
-@media (max-width: 1199.98px) {
-    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
-    .toolbar-form { grid-template-columns: 1fr 1fr; }
+.dim-theme .policy-product-summary {
+    background: #26382f;
+    border-color: #354c3f;
 }
 
-@media (max-width: 767.98px) {
-    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-    .toolbar-form { grid-template-columns: 1fr; }
-    .hero-title-area { flex-direction: column; align-items: flex-start; }
-    .hero-actions { width: 100%; }
-    .hero-actions .btn { flex: 1; }
-    .footer-content { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .nav-links .nav-link.active::after,
-    .nav-links .nav-link[aria-current="page"]::after {
-        display: block;
-        top: 5px;
-        right: auto;
-        bottom: 5px;
-        left: 0;
-        width: 3px;
-        height: auto;
-        border-radius: 0 3px 3px 0;
-    }
+.dim-theme .policy-choice-card {
+    border-color: #35473d;
+    background: #23342b;
+}
+.dim-theme .policy-choice-card:hover {
+    border-color: #4a6555;
+    background: #283c31;
+}
+.dim-theme .policy-choice-card.selected-restok {
+    border-color: #34d399 !important;
+    background: #1f3d2f !important;
+    box-shadow: 0 4px 14px rgba(52, 211, 153, 0.15);
+}
+.dim-theme .policy-choice-card.selected-hapus {
+    border-color: #f87171 !important;
+    background: #3d2323 !important;
+    box-shadow: 0 4px 14px rgba(248, 113, 113, 0.15);
+}
+
+/* Card & General Dim Theme Support (e.g. edit.php) */
+.dim-theme .card {
+    background-color: #223229 !important;
+    color: #dce7e1;
+    border: 1px solid #324438 !important;
+}
+.dim-theme .card-body {
+    background-color: transparent;
+    color: #dce7e1;
+}
+.dim-theme .eyebrow {
+    color: #63b387;
+}
+.dim-theme hr {
+    border-color: #2d3e34 !important;
+    opacity: 0.6;
+}
+.dim-theme .form-text,
+.dim-theme .text-secondary,
+.dim-theme .small.text-secondary {
+    color: #92a49b !important;
+}
+.dim-theme .text-muted {
+    color: #92a49b !important;
+}
+.dim-theme .btn-outline-secondary {
+    color: #b7cebf;
+    border-color: #3d5045;
+    background: #1f2e25;
+}
+.dim-theme .btn-outline-secondary:hover {
+    background: #2b3e32;
+    color: #ffffff;
+    border-color: #4f6758;
+}
+.dim-theme .btn-outline-green {
+    color: #68c393;
+    border-color: #355342;
+    background: #1c2b21;
+}
+.dim-theme .btn-outline-green:hover {
+    background: #267b58;
+    color: #ffffff;
+    border-color: #267b58;
+}
+
+/* SweetAlert Dim Theme */
+.dim-theme .swal2-popup {
+    background-color: #203127 !important;
+    color: #e2ede7 !important;
+    border: 1px solid #3b4b42;
+}
+.dim-theme .swal2-title {
+    color: #e2ede7 !important;
+}
+.dim-theme .swal2-html-container {
+    color: #a4b7ad !important;
+}
+
+.dim-theme .out-of-stock-panel {
+    background: #322b22;
+    border-color: #55442e;
+    border-left-color: #c8733d;
+}
+.dim-theme .out-of-stock-panel h3 {
+    color: #f6d8b3;
+}
+.dim-theme .out-of-stock-panel p {
+    color: #c8b59a;
+}
+.dim-theme .out-of-stock-item {
+    background: #3b3327;
+    border-color: #5e4b33;
+    color: #e8dfd5;
+}
+.dim-theme .form-actions-footer {
+    background: #222e28;
+    border-color: #33433a;
+}
+.dim-theme .btn-cancel {
+    background: #2a3931;
+    border-color: #3e5145;
+    color: #c9d6ce;
 }
 
 @media (max-width: 576px) {
-    .page-header-card, .form-section { padding: 1.25rem; }
-    .form-actions-footer { padding: 1.25rem; flex-direction: column-reverse; }
-    .btn-cancel, .btn-submit-save { width: 100%; }
-}
-
-@media (max-width: 480px) {
-    .kpi-grid { grid-template-columns: 1fr; }
-}
-
-/* --------------------------------------------------------------------------
-   10. Media Motion Accessibility
-   -------------------------------------------------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-    *, ::before, ::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
-}
-
-/* --------------------------------------------------------------------------
-   11. Print Stylesheet
-   -------------------------------------------------------------------------- */
-@media print {
-    body { background: white !important; color: black !important; font-size: 11pt; }
-    .pharmacy-nav, .hero-actions, .filter-pills, .inventory-toolbar, .action-buttons, .site-footer, .no-print { display: none !important; }
-    .inventory-hero { background: transparent !important; border: 0 !important; padding: 0 0 15px 0 !important; }
-    .kpi-grid { grid-template-columns: repeat(4, 1fr) !important; margin-bottom: 20px; }
-    .kpi-card { border: 1px solid #ccc !important; box-shadow: none !important; padding: 8px !important; }
-    .inventory-table-container { border: 1px solid #000 !important; box-shadow: none !important; }
-    .inventory-table th, .inventory-table td { border: 1px solid #ddd !important; padding: 6px 8px !important; }
-    .print-only-header { display: block !important; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .print-signatures { display: flex !important; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
-    .dim-theme,
-    .dim-theme * {
-        color: #000 !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-    }
-    .dim-theme .kpi-card,
-    .dim-theme .inventory-hero,
-    .dim-theme .inventory-table-container,
-    .dim-theme .inventory-table,
-    .dim-theme .inventory-table thead,
-    .dim-theme .inventory-table tbody tr,
-    .dim-theme .inventory-table tbody tr > *,
-    .dim-theme .main-form-card,
-    .dim-theme .card,
-    .dim-theme .page-header-card,
-    .dim-theme .table-header-meta,
-    .dim-theme .kpi-icon,
-    .dim-theme .table-category,
-    .dim-theme .batch-tag,
-    .dim-theme .pill-badge,
-    .dim-theme .inventory-empty-icon,
-    .dim-theme .section-icon-badge {
-        background: #fff !important;
-    }
-    .dim-theme .inventory-table thead th {
-        background: #eee !important;
-    }
-    .dim-theme .stock-badge,
-    .dim-theme .exp-badge,
-    .dim-theme .profit-badge {
-        background: #f2f2f2 !important;
-        border-color: #777 !important;
-        color: #000 !important;
-    }
-    .dim-theme .text-success,
-    .dim-theme .text-warning,
-    .dim-theme .text-warning-emphasis,
-    .dim-theme .text-danger,
-    .dim-theme .text-info,
-    .dim-theme .text-body,
-    .dim-theme .text-body-secondary,
-    .dim-theme .text-dark,
-    .dim-theme .text-white,
-    .dim-theme .text-muted,
-    .dim-theme .text-secondary,
-    .dim-theme .hero-title-area p,
-    .dim-theme .product-name,
-    .dim-theme .product-brand,
-    .dim-theme .price-sell,
-    .dim-theme .price-buy,
-    .dim-theme .kpi-label,
-    .dim-theme .kpi-hint,
-    .dim-theme .section-desc,
-    .dim-theme .form-text,
-    .dim-theme .form-label,
-    .dim-theme .footnote-tip,
-    .dim-theme .inventory-empty p,
-    .dim-theme .out-of-stock-panel p,
-    .dim-theme .table-category,
-    .dim-theme .batch-tag,
-    .dim-theme .stock-level,
-    .dim-theme .stock-level small,
-    .dim-theme .table-header-meta,
-    .dim-theme .kpi-icon,
-    .dim-theme .pill-badge,
-    .dim-theme .inventory-empty-icon,
-    .dim-theme .section-icon-badge,
-    .dim-theme .inventory-table th,
-    .dim-theme .inventory-table td,
-    .dim-theme h1,
-    .dim-theme h2,
-    .dim-theme h3,
-    .dim-theme h4,
-    .dim-theme h5,
-    .dim-theme h6 {
-        color: #000 !important;
+    .page-header-card {
+        padding: 1.25rem 1.25rem;
     }
     .dim-theme .expiry-info-card,
     .dim-theme .stock-empty-alert,
