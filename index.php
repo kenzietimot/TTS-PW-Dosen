@@ -15,40 +15,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stockId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $stockAction = $_POST['stock_action'] ?? '';
 
-    if (
-        is_string($postedToken)
-        && hash_equals($_SESSION['csrf_token'], $postedToken)
-        && $stockId !== false
-        && $stockId !== null
-        && $stockId > 0
-        && is_string($stockAction)
-        && in_array($stockAction, ['plus', 'minus'], true)
-    ) {
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+        || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+        || (isset($_POST['is_ajax']) && $_POST['is_ajax'] === '1');
+
+    $isValidToken = is_string($postedToken) && hash_equals($_SESSION['csrf_token'], $postedToken);
+    $isValidId = $stockId !== false && $stockId !== null && $stockId > 0;
+    $allowedActions = ['plus', 'minus', 'set_stock', 'adjust'];
+
+    if ($isValidToken && $isValidId && is_string($stockAction) && in_array($stockAction, $allowedActions, true)) {
         try {
-            if ($stockAction === 'plus') {
+            $executed = false;
+
+            if ($stockAction === 'set_stock') {
+                $newStock = filter_input(INPUT_POST, 'new_stock', FILTER_VALIDATE_INT);
+                if ($newStock !== false && $newStock !== null && $newStock >= 0 && $newStock <= 2147483647) {
+                    $stmt = $conn->prepare('UPDATE menu SET stok = ? WHERE id = ?');
+                    $stmt->bind_param('ii', $newStock, $stockId);
+                    $stmt->execute();
+                    $stmt->close();
+                    $executed = true;
+                }
+            } elseif ($stockAction === 'adjust') {
+                $delta = filter_input(INPUT_POST, 'delta', FILTER_VALIDATE_INT);
+                if ($delta !== false && $delta !== null) {
+                    $stmt = $conn->prepare('UPDATE menu SET stok = GREATEST(0, LEAST(2147483647, stok + ?)) WHERE id = ?');
+                    $stmt->bind_param('ii', $delta, $stockId);
+                    $stmt->execute();
+                    $stmt->close();
+                    $executed = true;
+                }
+            } elseif ($stockAction === 'plus') {
                 $stmt = $conn->prepare('UPDATE menu SET stok = stok + 1 WHERE id = ? AND stok < 2147483647');
-            } else {
+                $stmt->bind_param('i', $stockId);
+                $stmt->execute();
+                $stmt->close();
+                $executed = true;
+            } elseif ($stockAction === 'minus') {
                 $stmt = $conn->prepare('UPDATE menu SET stok = stok - 1 WHERE id = ? AND stok > 0');
+                $stmt->bind_param('i', $stockId);
+                $stmt->execute();
+                $stmt->close();
+                $executed = true;
             }
 
-            $stmt->bind_param('i', $stockId);
-            $stmt->execute();
-            $affectedRows = $stmt->affected_rows;
-            $stmt->close();
+            if ($executed) {
+                $itemStmt = $conn->prepare('SELECT id, nama_menu, stok, stok_minimum, satuan, kategori, harga, harga_beli, merek, deskripsi, tanggal_kedaluwarsa FROM menu WHERE id = ?');
+                $itemStmt->bind_param('i', $stockId);
+                $itemStmt->execute();
+                $updatedItem = $itemStmt->get_result()->fetch_assoc();
+                $itemStmt->close();
 
-            if ($affectedRows === 1) {
-                $updateStatus = 'stock_updated';
+                if ($updatedItem) {
+                    $updateStatus = 'stock_updated';
+
+                    if ($isAjax) {
+                        $currStok = (int) $updatedItem['stok'];
+                        $stokMin = (int) $updatedItem['stok_minimum'];
+
+                        if ($currStok === 0) {
+                            $stockClass = 'stock-badge-danger';
+                            $stockLabel = 'Stok Habis';
+                            $stockIcon = 'bi-x-circle-fill';
+                        } elseif ($currStok <= $stokMin) {
+                            $stockClass = 'stock-badge-warn';
+                            $stockLabel = 'Perlu Restock';
+                            $stockIcon = 'bi-exclamation-triangle-fill';
+                        } else {
+                            $stockClass = 'stock-badge-safe';
+                            $stockLabel = 'Stok Aman';
+                            $stockIcon = 'bi-check-circle-fill';
+                        }
+
+                        $kpiQuery = "SELECT 
+                            COUNT(*) AS total_sku,
+                            COALESCE(SUM(stok), 0) AS total_unit,
+                            COALESCE(SUM(CASE WHEN stok > 0 AND stok <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
+                            COALESCE(SUM(CASE WHEN stok = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
+                            COALESCE(SUM(CASE WHEN tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END), 0) AS total_exp_alert,
+                            COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * stok ELSE harga * stok END), 0) AS total_nilai_aset
+                        FROM menu";
+                        $kpiRes = $conn->query($kpiQuery);
+                        $kpiData = $kpiRes ? $kpiRes->fetch_assoc() : null;
+
+                        header('Content-Type: application/json; charset=utf-8');
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Stok "' . $updatedItem['nama_menu'] . '" berhasil diverifikasi dan disimpan menjadi ' . number_format($currStok, 0, ',', '.') . ' ' . $updatedItem['satuan'] . '.',
+                            'data' => [
+                                'id' => (int) $updatedItem['id'],
+                                'nama_menu' => $updatedItem['nama_menu'],
+                                'stok' => $currStok,
+                                'stok_minimum' => $stokMin,
+                                'satuan' => $updatedItem['satuan'],
+                                'stock_class' => $stockClass,
+                                'stock_label' => $stockLabel,
+                                'stock_icon' => $stockIcon,
+                                'item' => $updatedItem,
+                                'kpi' => $kpiData
+                            ]
+                        ]);
+                        exit();
+                    }
+                } else {
+                    $updateStatus = 'stock_error';
+                }
             } else {
-                $checkStmt = $conn->prepare('SELECT id FROM menu WHERE id = ?');
-                $checkStmt->bind_param('i', $stockId);
-                $checkStmt->execute();
-                $checkStmt->store_result();
-                $updateStatus = $checkStmt->num_rows === 1 ? 'stock_unchanged' : 'stock_error';
-                $checkStmt->close();
+                $updateStatus = 'stock_error';
             }
         } catch (Throwable $exception) {
             error_log($exception->getMessage());
             $updateStatus = 'stock_error';
+            if ($isAjax) {
+                header('Content-Type: application/json; charset=utf-8');
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan sistem saat memperbarui stok. Silakan coba lagi.'
+                ]);
+                exit();
+            }
+        }
+    } else {
+        if ($isAjax) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Permintaan tidak valid atau sesi telah kedaluwarsa. Muat ulang halaman.'
+            ]);
+            exit();
         }
     }
 
@@ -261,7 +357,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Total SKU Obat</span>
                         <span class="kpi-icon icon-green"><i class="bi bi-capsule"></i></span>
                     </div>
-                    <div class="kpi-value"><?= number_format((int) $kpi['total_sku'], 0, ',', '.'); ?></div>
+                    <div class="kpi-value" id="kpiTotalSku"><?= number_format((int) $kpi['total_sku'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint"><i class="bi bi-check2-circle text-success"></i> Varian produk aktif</div>
                 </a>
 
@@ -270,7 +366,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Stok Menipis</span>
                         <span class="kpi-icon icon-amber"><i class="bi bi-exclamation-triangle"></i></span>
                     </div>
-                    <div class="kpi-value text-warning"><?= number_format((int) $kpi['total_menipis'], 0, ',', '.'); ?></div>
+                    <div class="kpi-value text-warning" id="kpiTotalMenipis"><?= number_format((int) $kpi['total_menipis'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint text-warning"><i class="bi bi-arrow-down-right"></i> &le; Batas minimum</div>
                 </a>
 
@@ -279,7 +375,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Stok Habis</span>
                         <span class="kpi-icon icon-coral"><i class="bi bi-x-octagon"></i></span>
                     </div>
-                    <div class="kpi-value text-danger"><?= number_format((int) $kpi['total_habis'], 0, ',', '.'); ?></div>
+                    <div class="kpi-value text-danger" id="kpiTotalHabis"><?= number_format((int) $kpi['total_habis'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint text-danger"><i class="bi bi-dash-circle"></i> Perlu restock segera</div>
                 </a>
 
@@ -288,7 +384,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Alert Kedaluwarsa</span>
                         <span class="kpi-icon icon-amber"><i class="bi bi-clock-history"></i></span>
                     </div>
-                    <div class="kpi-value text-danger"><?= number_format((int) $kpi['total_exp_alert'], 0, ',', '.'); ?></div>
+                    <div class="kpi-value text-danger" id="kpiTotalExp"><?= number_format((int) $kpi['total_exp_alert'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint text-danger"><i class="bi bi-bell"></i> &le; 90 hari / Expired</div>
                 </a>
 
@@ -297,7 +393,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Total Fisik Stok</span>
                         <span class="kpi-icon icon-blue"><i class="bi bi-boxes"></i></span>
                     </div>
-                    <div class="kpi-value"><?= number_format((int) $kpi['total_unit'], 0, ',', '.'); ?></div>
+                    <div class="kpi-value" id="kpiTotalUnit"><?= number_format((int) $kpi['total_unit'], 0, ',', '.'); ?></div>
                     <div class="kpi-hint"><i class="bi bi-archive text-info"></i> Seluruh unit di gudang</div>
                 </div>
 
@@ -306,7 +402,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         <span class="kpi-label">Estimasi Nilai Aset</span>
                         <span class="kpi-icon icon-green"><i class="bi bi-cash-stack"></i></span>
                     </div>
-                    <div class="kpi-value" style="font-size: 1.25rem;">
+                    <div class="kpi-value" id="kpiNilaiAset" style="font-size: 1.25rem;">
                         Rp <?= number_format((int) $kpi['total_nilai_aset'], 0, ',', '.'); ?>
                     </div>
                     <div class="kpi-hint"><i class="bi bi-graph-up text-success"></i> Valuasi persediaan</div>
@@ -322,19 +418,19 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
             <!-- Quick Filter Tab Pills (No Print) -->
             <div class="filter-pills no-print">
                 <a href="index.php?status_stok=semua#tabel-inventaris" class="pill-tab <?= $statusStok === 'semua' ? 'active' : ''; ?>">
-                    <i class="bi bi-grid-fill"></i> Semua Obat <span class="pill-badge"><?= (int) $kpi['total_sku']; ?></span>
+                    <i class="bi bi-grid-fill"></i> Semua Obat <span class="pill-badge" id="pillTotalSku"><?= (int) $kpi['total_sku']; ?></span>
                 </a>
                 <a href="index.php?status_stok=aman#tabel-inventaris" class="pill-tab <?= $statusStok === 'aman' ? 'active' : ''; ?>">
                     <i class="bi bi-check-circle-fill text-success"></i> Stok Aman
                 </a>
                 <a href="index.php?status_stok=menipis#tabel-inventaris" class="pill-tab <?= $statusStok === 'menipis' ? 'active' : ''; ?>">
-                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Perlu Reorder <span class="pill-badge"><?= (int) $kpi['total_menipis']; ?></span>
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Perlu Reorder <span class="pill-badge" id="pillTotalMenipis"><?= (int) $kpi['total_menipis']; ?></span>
                 </a>
                 <a href="index.php?status_stok=habis#tabel-inventaris" class="pill-tab <?= $statusStok === 'habis' ? 'active' : ''; ?>">
-                    <i class="bi bi-x-circle-fill text-danger"></i> Stok Kosong <span class="pill-badge"><?= (int) $kpi['total_habis']; ?></span>
+                    <i class="bi bi-x-circle-fill text-danger"></i> Stok Kosong <span class="pill-badge" id="pillTotalHabis"><?= (int) $kpi['total_habis']; ?></span>
                 </a>
                 <a href="index.php?status_stok=segera_kedaluwarsa#tabel-inventaris" class="pill-tab <?= $statusStok === 'segera_kedaluwarsa' ? 'active' : ''; ?>">
-                    <i class="bi bi-hourglass-split text-danger"></i> Dekat Expired <span class="pill-badge"><?= (int) $kpi['total_exp_alert']; ?></span>
+                    <i class="bi bi-hourglass-split text-danger"></i> Dekat Expired <span class="pill-badge" id="pillTotalExp"><?= (int) $kpi['total_exp_alert']; ?></span>
                 </a>
             </div>
 
@@ -466,11 +562,11 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                                         $expBadge = '<span class="text-muted small">Non-expired</span>';
                                     }
                                     ?>
-                                    <tr>
+                                    <tr id="item-row-<?= (int) $item['id']; ?>" data-item-id="<?= (int) $item['id']; ?>">
                                         <td class="text-center text-muted small"><?= $no++; ?></td>
                                         <td>
                                             <div class="product-cell">
-                                                <a href="javascript:void(0)" class="product-name" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)'>
+                                                <a href="javascript:void(0)" class="product-name item-detail-trigger" id="detail-trigger-<?= (int) $item['id']; ?>" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)'>
                                                     <?= $escape($item['nama_menu']); ?>
                                                 </a>
                                                 <span class="product-brand">
@@ -486,30 +582,39 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                                             <span class="table-category"><?= $escape($item['kategori']); ?></span>
                                         </td>
                                         <td>
-                                            <div class="stock-wrap">
+                                            <div class="stock-wrap"
+                                                 data-id="<?= (int) $item['id']; ?>"
+                                                 data-nama="<?= $escape($item['nama_menu']); ?>"
+                                                 data-satuan="<?= $escape($satuan); ?>"
+                                                 data-stok-min="<?= $stokMin; ?>"
+                                                 data-initial-stok="<?= $stok; ?>"
+                                                 data-kategori="<?= $escape($item['kategori']); ?>">
                                                 <div class="stock-level">
-                                                    <span><?= number_format($stok, 0, ',', '.'); ?></span>
-                                                    <small><?= $escape($satuan); ?></small>
+                                                    <span class="stock-number"><?= number_format($stok, 0, ',', '.'); ?></span>
+                                                    <small class="stock-unit"><?= $escape($satuan); ?></small>
+                                                    <span class="stock-delta-badge d-none" aria-live="polite"></span>
                                                 </div>
                                                 <span class="stock-badge <?= $stockClass; ?>">
-                                                    <i class="bi <?= $stockIcon; ?>"></i> <?= $stockLabel; ?>
+                                                    <i class="bi <?= $stockIcon; ?>"></i> <span class="stock-badge-text"><?= $stockLabel; ?></span>
                                                 </span>
-                                                <small class="text-muted" style="font-size: .68rem;">Min: <?= $stokMin; ?> <?= $escape($satuan); ?></small>
+                                                <small class="text-muted stock-min-label" style="font-size: .68rem;">Min: <?= $stokMin; ?> <?= $escape($satuan); ?></small>
+                                                
                                                 <div class="stock-adjust-controls no-print" aria-label="Ubah stok <?= $escape($item['nama_menu']); ?>">
-                                                    <form method="post" action="index.php<?= $queryString !== '' ? '?' . $escape($queryString) : ''; ?>#tabel-inventaris" class="stock-adjust-form">
-                                                        <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['csrf_token']); ?>">
-                                                        <input type="hidden" name="id" value="<?= (int) $item['id']; ?>">
-                                                        <button type="submit" name="stock_action" value="minus" class="stock-adjust-btn" title="Kurangi stok" aria-label="Kurangi satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok === 0 ? 'disabled' : ''; ?>>
-                                                            <i class="bi bi-dash-lg"></i>
-                                                        </button>
-                                                    </form>
-                                                    <form method="post" action="index.php<?= $queryString !== '' ? '?' . $escape($queryString) : ''; ?>#tabel-inventaris" class="stock-adjust-form">
-                                                        <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['csrf_token']); ?>">
-                                                        <input type="hidden" name="id" value="<?= (int) $item['id']; ?>">
-                                                        <button type="submit" name="stock_action" value="plus" class="stock-adjust-btn" title="Tambah stok" aria-label="Tambah satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok >= 2147483647 ? 'disabled' : ''; ?>>
-                                                            <i class="bi bi-plus-lg"></i>
-                                                        </button>
-                                                    </form>
+                                                    <button type="button" class="stock-adjust-btn stock-btn-minus" title="Kurangi stok" aria-label="Kurangi satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok === 0 ? 'disabled' : ''; ?>>
+                                                        <i class="bi bi-dash-lg"></i>
+                                                    </button>
+                                                    <button type="button" class="stock-adjust-btn stock-btn-plus" title="Tambah stok" aria-label="Tambah satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok >= 2147483647 ? 'disabled' : ''; ?>>
+                                                        <i class="bi bi-plus-lg"></i>
+                                                    </button>
+                                                </div>
+
+                                                <div class="stock-verify-controls no-print d-none">
+                                                    <button type="button" class="stock-verify-btn" title="Verifikasi apakah jumlah fisik stok sudah sesuai">
+                                                        <i class="bi bi-check2"></i> Verifikasi
+                                                    </button>
+                                                    <button type="button" class="stock-cancel-btn" title="Batalkan penyesuaian">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </td>
@@ -524,7 +629,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                                         </td>
                                         <td class="text-end no-print">
                                             <div class="action-buttons">
-                                                <button type="button" class="table-action detail-action" title="Lihat Detail & Lokasi Rak" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)' aria-label="Lihat detail obat">
+                                                <button type="button" class="table-action detail-action" id="detail-btn-<?= (int) $item['id']; ?>" title="Lihat Detail & Lokasi Rak" onclick='showItemDetail(<?= json_encode($item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>)' aria-label="Lihat detail obat">
                                                     <i class="bi bi-info-circle"></i>
                                                 </button>
                                                 <a href="edit.php?id=<?= (int) $item['id']; ?>" class="table-action edit-action" title="Edit Data Inventaris" aria-label="Edit <?= $escape($item['nama_menu']); ?>">
@@ -631,6 +736,8 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 const currency = new Intl.NumberFormat('id-ID');
+const numFormat = new Intl.NumberFormat('id-ID');
+const CSRF_TOKEN = <?= json_encode($_SESSION['csrf_token']); ?>;
 
 // Konfirmasi Hapus Produk
 function confirmDelete(id, nama) {
@@ -690,6 +797,343 @@ themeToggleBtn.addEventListener('click', () => {
     applyTheme(isNowDim);
     localStorage.setItem('sehatmart-dim', String(isNowDim));
 });
+
+// =========================================================================
+// Multi-Step Interactive Stock Adjustment with Verification Workflow
+// =========================================================================
+(function initStockAdjustment() {
+    const stockMap = new Map();
+
+    function getStockBadgeInfo(stok, minStok) {
+        if (stok === 0) {
+            return {
+                className: 'stock-badge-danger',
+                icon: 'bi-x-circle-fill',
+                label: 'Stok Habis'
+            };
+        }
+        if (stok <= minStok) {
+            return {
+                className: 'stock-badge-warn',
+                icon: 'bi-exclamation-triangle-fill',
+                label: 'Perlu Restock'
+            };
+        }
+        return {
+            className: 'stock-badge-safe',
+            icon: 'bi-check-circle-fill',
+            label: 'Stok Aman'
+        };
+    }
+
+    function renderStockUI(state) {
+        const { wrapEl, stagedStok, initialStok, stokMin, satuan } = state;
+        const delta = stagedStok - initialStok;
+        state.delta = delta;
+
+        const numberEl = wrapEl.querySelector('.stock-number');
+        if (numberEl) {
+            numberEl.textContent = numFormat.format(stagedStok);
+        }
+
+        const deltaBadge = wrapEl.querySelector('.stock-delta-badge');
+        if (deltaBadge) {
+            if (delta !== 0) {
+                deltaBadge.classList.remove('d-none');
+                deltaBadge.textContent = (delta > 0 ? `+${delta}` : `${delta}`) + ` ${satuan}`;
+                deltaBadge.className = 'stock-delta-badge ' + (delta > 0 ? 'delta-pos' : 'delta-neg');
+            } else {
+                deltaBadge.classList.add('d-none');
+            }
+        }
+
+        const badgeEl = wrapEl.querySelector('.stock-badge');
+        const badgeTextEl = wrapEl.querySelector('.stock-badge-text');
+        const badgeIconEl = badgeEl ? badgeEl.querySelector('i') : null;
+        if (badgeEl) {
+            const badgeInfo = getStockBadgeInfo(stagedStok, stokMin);
+            badgeEl.classList.remove('stock-badge-safe', 'stock-badge-warn', 'stock-badge-danger');
+            badgeEl.classList.add(badgeInfo.className);
+            if (badgeTextEl) badgeTextEl.textContent = badgeInfo.label;
+            if (badgeIconEl) {
+                badgeIconEl.className = 'bi ' + badgeInfo.icon;
+            }
+        }
+
+        const minusBtn = wrapEl.querySelector('.stock-btn-minus');
+        if (minusBtn) {
+            minusBtn.disabled = stagedStok <= 0;
+        }
+
+        const verifyGroup = wrapEl.querySelector('.stock-verify-controls');
+        if (verifyGroup) {
+            if (delta !== 0) {
+                verifyGroup.classList.remove('d-none');
+            } else {
+                verifyGroup.classList.add('d-none');
+            }
+        }
+    }
+
+    document.querySelectorAll('.stock-wrap').forEach((wrapEl) => {
+        const id = parseInt(wrapEl.dataset.id, 10);
+        const initialStok = parseInt(wrapEl.dataset.initialStok, 10) || 0;
+        const stokMin = parseInt(wrapEl.dataset.stokMin, 10) || 5;
+        const satuan = wrapEl.dataset.satuan || 'pcs';
+        const nama = wrapEl.dataset.nama || 'Produk';
+        const kategori = wrapEl.dataset.kategori || 'Obat';
+
+        const state = {
+            id,
+            initialStok,
+            stagedStok: initialStok,
+            delta: 0,
+            stokMin,
+            satuan,
+            nama,
+            kategori,
+            wrapEl
+        };
+
+        stockMap.set(id, state);
+
+        const plusBtn = wrapEl.querySelector('.stock-btn-plus');
+        if (plusBtn) {
+            plusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (state.stagedStok < 2147483647) {
+                    state.stagedStok += 1;
+                    renderStockUI(state);
+                }
+            });
+        }
+
+        const minusBtn = wrapEl.querySelector('.stock-btn-minus');
+        if (minusBtn) {
+            minusBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (state.stagedStok > 0) {
+                    state.stagedStok -= 1;
+                    renderStockUI(state);
+                }
+            });
+        }
+
+        const cancelBtn = wrapEl.querySelector('.stock-cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                state.stagedStok = state.initialStok;
+                renderStockUI(state);
+            });
+        }
+
+        const numberEl = wrapEl.querySelector('.stock-number');
+        if (numberEl) {
+            numberEl.style.cursor = 'pointer';
+            numberEl.title = 'Klik untuk input angka langsung';
+            numberEl.addEventListener('click', async () => {
+                const { value: inputVal } = await Swal.fire({
+                    title: `Input Stok: ${state.nama}`,
+                    text: `Masukkan jumlah stok fisik baru (${state.satuan}):`,
+                    input: 'number',
+                    inputValue: state.stagedStok,
+                    inputAttributes: {
+                        min: 0,
+                        max: 2147483647,
+                        step: 1
+                    },
+                    showCancelButton: true,
+                    confirmButtonText: 'Terapkan',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#059669',
+                    inputValidator: (val) => {
+                        if (val === '' || isNaN(val) || parseInt(val, 10) < 0) {
+                            return 'Jumlah stok harus angka 0 atau lebih besar!';
+                        }
+                    }
+                });
+
+                if (inputVal !== undefined && inputVal !== null) {
+                    const parsed = parseInt(inputVal, 10);
+                    if (!isNaN(parsed) && parsed >= 0) {
+                        state.stagedStok = parsed;
+                        renderStockUI(state);
+                    }
+                }
+            });
+        }
+
+        const verifyBtn = wrapEl.querySelector('.stock-verify-btn');
+        if (verifyBtn) {
+            verifyBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await promptVerification(state);
+            });
+        }
+    });
+
+    async function promptVerification(state) {
+        const diff = state.delta;
+        const diffBadge = diff > 0
+            ? `<span class="badge" style="background-color: #059669; font-size: 0.85rem; padding: 4px 8px;">+${diff} ${state.satuan}</span>`
+            : `<span class="badge" style="background-color: #e11d48; font-size: 0.85rem; padding: 4px 8px;">${diff} ${state.satuan}</span>`;
+
+        const result = await Swal.fire({
+            title: 'Verifikasi Penyesuaian Stok',
+            html: `
+                <div class="text-start">
+                    <p class="mb-3 text-muted" style="font-size: 0.9rem;">
+                        Periksa ketersediaan fisik obat di rak apotek sebelum memverifikasi dan menyimpan data:
+                    </p>
+                    <div class="p-3 mb-3 rounded" style="background: rgba(5, 150, 105, 0.08); border-left: 4px solid #059669;">
+                        <div class="fw-bold fs-6" style="color: #047857;">${state.nama}</div>
+                        <small class="text-muted">Kategori: ${state.kategori} &bull; Batas Minimum: ${state.stokMin} ${state.satuan}</small>
+                    </div>
+                    <div class="p-3 rounded border mb-3" style="background: rgba(0, 0, 0, 0.02);">
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-muted">Stok Sebelumnya:</span>
+                            <span class="fw-semibold">${numFormat.format(state.initialStok)} ${state.satuan}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-muted">Perubahan (Penyesuaian):</span>
+                            <div>${diffBadge}</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top">
+                            <span class="fw-bold">Stok Akhir Baru:</span>
+                            <strong class="fs-5" style="color: #059669;">${numFormat.format(state.stagedStok)} ${state.satuan}</strong>
+                        </div>
+                    </div>
+                    <div class="text-center text-muted small mt-2">
+                        <i class="bi bi-shield-check text-success me-1"></i>
+                        Apakah jumlah fisik di rak apotek sudah sesuai dengan <strong>${numFormat.format(state.stagedStok)} ${state.satuan}</strong>?
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#059669',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Ya, Sudah Sesuai (Simpan)',
+            cancelButtonText: 'Batal / Cek Lagi',
+            reverseButtons: true,
+            focusConfirm: true
+        });
+
+        if (result.isConfirmed) {
+            await commitStock(state);
+        }
+    }
+
+    async function commitStock(state) {
+        const verifyBtn = state.wrapEl.querySelector('.stock-verify-btn');
+        const cancelBtn = state.wrapEl.querySelector('.stock-cancel-btn');
+        const originalVerifyContent = verifyBtn ? verifyBtn.innerHTML : 'Verifikasi';
+
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menyimpan...';
+        }
+        if (cancelBtn) cancelBtn.disabled = true;
+
+        try {
+            const formData = new URLSearchParams();
+            formData.append('csrf_token', CSRF_TOKEN);
+            formData.append('id', String(state.id));
+            formData.append('stock_action', 'set_stock');
+            formData.append('new_stock', String(state.stagedStok));
+            formData.append('delta', String(state.delta));
+            formData.append('is_ajax', '1');
+
+            const response = await fetch('index.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData.toString()
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                state.initialStok = state.stagedStok;
+                state.delta = 0;
+                state.wrapEl.dataset.initialStok = String(state.stagedStok);
+
+                renderStockUI(state);
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: result.message || 'Stok berhasil diverifikasi & disimpan!',
+                    showConfirmButton: false,
+                    timer: 2300,
+                    timerProgressBar: true
+                });
+
+                if (result.data?.item) {
+                    const updatedJson = JSON.stringify(result.data.item);
+                    const detailTrigger = document.getElementById(`detail-trigger-${state.id}`);
+                    const detailBtn = document.getElementById(`detail-btn-${state.id}`);
+                    if (detailTrigger) detailTrigger.setAttribute('onclick', `showItemDetail(${updatedJson})`);
+                    if (detailBtn) detailBtn.setAttribute('onclick', `showItemDetail(${updatedJson})`);
+                }
+
+                if (result.data?.kpi) {
+                    const kpi = result.data.kpi;
+                    const setEl = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = val;
+                    };
+                    setEl('kpiTotalSku', numFormat.format(kpi.total_sku));
+                    setEl('kpiTotalMenipis', numFormat.format(kpi.total_menipis));
+                    setEl('kpiTotalHabis', numFormat.format(kpi.total_habis));
+                    setEl('kpiTotalExp', numFormat.format(kpi.total_exp_alert));
+                    setEl('kpiTotalUnit', numFormat.format(kpi.total_unit));
+                    setEl('kpiNilaiAset', `Rp ${numFormat.format(kpi.total_nilai_aset)}`);
+                    setEl('pillTotalSku', String(kpi.total_sku));
+                    setEl('pillTotalMenipis', String(kpi.total_menipis));
+                    setEl('pillTotalHabis', String(kpi.total_habis));
+                    setEl('pillTotalExp', String(kpi.total_exp_alert));
+                }
+            } else {
+                throw new Error(result.message || 'Gagal menyimpan penyesuaian stok.');
+            }
+        } catch (err) {
+            Swal.fire({
+                title: 'Gagal Menyimpan Stok',
+                text: err.message || 'Terjadi gangguan jaringan atau sesi kedaluwarsa.',
+                icon: 'error',
+                confirmButtonColor: '#059669'
+            });
+            renderStockUI(state);
+        } finally {
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = originalVerifyContent;
+            }
+            if (cancelBtn) cancelBtn.disabled = false;
+        }
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        let hasUnsaved = false;
+        for (const s of stockMap.values()) {
+            if (s.delta !== 0) {
+                hasUnsaved = true;
+                break;
+            }
+        }
+        if (hasUnsaved) {
+            e.preventDefault();
+            e.returnValue = 'Terdapat penyesuaian stok yang belum diverifikasi. Yakin ingin meninggalkan halaman?';
+            return e.returnValue;
+        }
+    });
+})();
 
 // Alert Notifikasi Operasi
 <?php if (isset($statusMessages[$alertStatus])): ?>

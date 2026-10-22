@@ -851,8 +851,9 @@ a:hover {
 
 .stock-adjust-controls {
     display: flex;
+    align-items: center;
     gap: 4px;
-    margin-top: 2px;
+    margin-top: 3px;
 }
 
 .stock-adjust-form {
@@ -860,8 +861,8 @@ a:hover {
 }
 
 .stock-adjust-btn {
-    width: 25px;
-    height: 24px;
+    width: 26px;
+    height: 25px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -869,18 +870,121 @@ a:hover {
     border-radius: 5px;
     background: var(--surface);
     color: var(--green-dark);
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     line-height: 1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
 }
 
 .stock-adjust-btn:hover:not(:disabled) {
     border-color: var(--green);
     background: var(--green-soft);
+    color: var(--green);
+    transform: translateY(-1px);
+}
+
+.stock-adjust-btn:active:not(:disabled) {
+    transform: scale(0.92);
 }
 
 .stock-adjust-btn:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* Staging delta indicator badge */
+.stock-delta-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.68rem;
+    font-weight: 750;
+    padding: 1px 6px;
+    border-radius: 999px;
+    line-height: 1.25;
+    animation: stockDeltaPop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    vertical-align: middle;
+}
+
+.stock-delta-badge.delta-pos {
+    background: rgba(5, 150, 105, 0.14);
+    color: #047857;
+    border: 1px solid rgba(5, 150, 105, 0.35);
+}
+
+.stock-delta-badge.delta-neg {
+    background: rgba(225, 29, 72, 0.14);
+    color: #be123c;
+    border: 1px solid rgba(225, 29, 72, 0.35);
+}
+
+@keyframes stockDeltaPop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Verification action bar */
+.stock-verify-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 5px;
+    animation: stockVerifyFadeIn 0.22s ease-out;
+}
+
+@keyframes stockVerifyFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.stock-verify-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--green);
+    color: #ffffff;
+    border: 1px solid var(--green);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+    transition: all 0.16s ease;
+    white-space: nowrap;
+}
+
+.stock-verify-btn:hover {
+    background: var(--green-dark);
+    border-color: var(--green-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(5, 150, 105, 0.38);
+}
+
+.stock-verify-btn:active {
+    transform: translateY(0);
+}
+
+.stock-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 5px;
+    font-size: 0.74rem;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.stock-cancel-btn:hover {
+    background: var(--coral-soft);
+    color: var(--coral);
+    border-color: var(--coral);
 }
 
 .stock-badge {
@@ -1678,6 +1782,29 @@ html.dim-theme .filter-pills .pill-tab.active .pill-badge {
 .dim-theme .stock-adjust-btn:hover:not(:disabled) {
     background: #293d31;
     border-color: #668a72;
+}
+
+.dim-theme .stock-cancel-btn {
+    border-color: #3a4d41;
+    color: #94a3b8;
+}
+
+.dim-theme .stock-cancel-btn:hover {
+    background: #4c2226;
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+
+.dim-theme .stock-delta-badge.delta-pos {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.45);
+}
+
+.dim-theme .stock-delta-badge.delta-neg {
+    background: rgba(244, 63, 94, 0.22);
+    color: #fb7185;
+    border-color: rgba(251, 113, 133, 0.45);
 }
 
 /* Responsive adjustments */
