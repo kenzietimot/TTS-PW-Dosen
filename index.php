@@ -495,7 +495,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                                                 </a>
                                                 <span class="product-brand">
                                                     <?php if (!empty($item['merek'])): ?>
-                                                        <i class="bi bi-building"></i> <?= $escape($item['merek']); ?>
+                                                        <?= $escape($item['merek']); ?>
                                                     <?php else: ?>
                                                         <span class="text-muted">Generik / Tanpa Merek</span>
                                                     <?php endif; ?>
