@@ -589,6 +589,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* Dim / Dark Theme */
+html.dim-theme,
+body.dim-theme,
 .dim-theme {
     background: #17231c;
     color: #dce7e1;
@@ -901,39 +903,107 @@ a { color: inherit; text-decoration: none; }
     border: 1px solid #dbe2de;
 }
 
-/* Opsi & Box Status Tindakan Stok Habis */
-.stock-empty-alert {
-    background: #fff8f5;
-    border: 1px solid #fbdad2;
-    border-radius: 12px;
-    padding: 0.9rem 1.15rem;
-    margin-top: 0.75rem;
-    display: flex;
+/* Live Stock Status Notice (under stock input) */
+.stock-status-notice {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
     animation: fadeInSlide 0.25s ease-out;
 }
+.stock-status-notice.empty {
+    background: #fff1f0;
+    color: #cf222e;
+    border: 1px solid #ffd0cc;
+}
+.stock-status-notice.low {
+    background: #fff8eb;
+    color: #b45309;
+    border: 1px solid #fed7aa;
+}
+.stock-status-notice.safe {
+    background: #ecfdf3;
+    color: #027a48;
+    border: 1px solid #abefc6;
+}
+.stock-status-notice .policy-trigger-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.84rem;
+    color: inherit;
+    margin-left: 4px;
+}
+.stock-status-notice .policy-trigger-btn:hover {
+    opacity: 0.8;
+}
+
+/* Modal Kebijakan Inventaris Pop-up */
+.custom-policy-modal {
+    border-radius: 18px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+}
+.policy-modal-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.policy-modal-icon-wrap.empty {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.policy-modal-icon-wrap.low {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.policy-product-summary {
+    background: #f7faf8;
+    border: 1px solid #e1ebe4;
+    border-radius: 12px;
+}
+
+.policy-choice-card {
+    border: 2px solid #e2ece5;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 100%;
+    position: relative;
+}
+.policy-choice-card:hover {
+    border-color: #9ec5ad;
+    background: #f8fcf9;
+}
+.policy-choice-card.selected-restok {
+    border-color: #267b58 !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 4px 14px rgba(38, 123, 88, 0.12);
+}
+.policy-choice-card.selected-hapus {
+    border-color: #dc2626 !important;
+    background: #fef2f2 !important;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.12);
+}
+
 @keyframes fadeInSlide {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-.stock-action-card {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1.5px solid #dbe6de !important;
-    background: #ffffff !important;
-}
-.stock-action-card:hover {
-    border-color: #9eccaf !important;
-    background: #f9fbf9 !important;
-}
-.stock-action-card:has(.form-check-input:checked) {
-    border-color: var(--green, #267b58) !important;
-    background: #f1f8f3 !important;
-    box-shadow: 0 2px 10px rgba(38, 123, 88, 0.08);
 }
 
 /* Panel Produk Stok Habis Terdeteksi */
@@ -1094,21 +1164,152 @@ a { color: inherit; text-decoration: none; }
 .dim-theme .expiry-info-card strong {
     color: #e7eee9;
 }
-.dim-theme .stock-action-card {
-    background: #2b3a32 !important;
-    border-color: #3d5045 !important;
+/* Policy Modal & Notice Dim Theme Support */
+.dim-theme .stock-status-notice.empty {
+    background: #3a1f1d;
+    color: #ff8b87;
+    border-color: #632d29;
 }
-.dim-theme .stock-action-card:has(.form-check-input:checked) {
-    background: #34463b !important;
-    border-color: var(--green) !important;
+.dim-theme .stock-status-notice.low {
+    background: #3a2e19;
+    color: #f6c065;
+    border-color: #5c451f;
 }
+.dim-theme .stock-status-notice.safe {
+    background: #1b3829;
+    color: #7ee0ad;
+    border-color: #2a523c;
+}
+
+.dim-theme .modal-content,
+.dim-theme .custom-modal,
+.dim-theme .custom-policy-modal {
+    background-color: #1e2c24 !important;
+    color: #e2ede7 !important;
+    border: 1px solid #334439 !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5) !important;
+}
+.dim-theme .modal-header {
+    border-bottom-color: #28392f !important;
+}
+.dim-theme .modal-footer {
+    border-top-color: #28392f !important;
+    background-color: #18231d !important;
+}
+.dim-theme .modal-title {
+    color: #eaf3ee !important;
+}
+.dim-theme .btn-close {
+    filter: invert(1) grayscale(100%) brightness(180%);
+}
+
+.dim-theme .policy-modal-icon-wrap.empty {
+    background: #451a1a;
+    color: #f87171;
+}
+.dim-theme .policy-modal-icon-wrap.low {
+    background: #423214;
+    color: #fbbf24;
+}
+
+.dim-theme .policy-product-summary {
+    background: #26382f;
+    border-color: #354c3f;
+}
+
+.dim-theme .policy-choice-card {
+    border-color: #35473d;
+    background: #23342b;
+}
+.dim-theme .policy-choice-card:hover {
+    border-color: #4a6555;
+    background: #283c31;
+}
+.dim-theme .policy-choice-card.selected-restok {
+    border-color: #34d399 !important;
+    background: #1f3d2f !important;
+    box-shadow: 0 4px 14px rgba(52, 211, 153, 0.15);
+}
+.dim-theme .policy-choice-card.selected-hapus {
+    border-color: #f87171 !important;
+    background: #3d2323 !important;
+    box-shadow: 0 4px 14px rgba(248, 113, 113, 0.15);
+}
+
+/* Card & General Dim Theme Support (e.g. edit.php) */
+.dim-theme .card {
+    background-color: #223229 !important;
+    color: #dce7e1;
+    border: 1px solid #324438 !important;
+}
+.dim-theme .card-body {
+    background-color: transparent;
+    color: #dce7e1;
+}
+.dim-theme .eyebrow {
+    color: #63b387;
+}
+.dim-theme hr {
+    border-color: #2d3e34 !important;
+    opacity: 0.6;
+}
+.dim-theme .form-text,
+.dim-theme .text-secondary,
+.dim-theme .small.text-secondary {
+    color: #92a49b !important;
+}
+.dim-theme .text-muted {
+    color: #92a49b !important;
+}
+.dim-theme .btn-outline-secondary {
+    color: #b7cebf;
+    border-color: #3d5045;
+    background: #1f2e25;
+}
+.dim-theme .btn-outline-secondary:hover {
+    background: #2b3e32;
+    color: #ffffff;
+    border-color: #4f6758;
+}
+.dim-theme .btn-outline-green {
+    color: #68c393;
+    border-color: #355342;
+    background: #1c2b21;
+}
+.dim-theme .btn-outline-green:hover {
+    background: #267b58;
+    color: #ffffff;
+    border-color: #267b58;
+}
+
+/* SweetAlert Dim Theme */
+.dim-theme .swal2-popup {
+    background-color: #203127 !important;
+    color: #e2ede7 !important;
+    border: 1px solid #3b4b42;
+}
+.dim-theme .swal2-title {
+    color: #e2ede7 !important;
+}
+.dim-theme .swal2-html-container {
+    color: #a4b7ad !important;
+}
+
 .dim-theme .out-of-stock-panel {
     background: #322b22;
     border-color: #55442e;
+    border-left-color: #c8733d;
+}
+.dim-theme .out-of-stock-panel h3 {
+    color: #f6d8b3;
+}
+.dim-theme .out-of-stock-panel p {
+    color: #c8b59a;
 }
 .dim-theme .out-of-stock-item {
     background: #3b3327;
     border-color: #5e4b33;
+    color: #e8dfd5;
 }
 .dim-theme .form-actions-footer {
     background: #222e28;

@@ -140,6 +140,15 @@ $today = new DateTimeImmutable('today');
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('sehatmart-dim') === 'true') {
+                    document.documentElement.classList.add('dim-theme');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -601,12 +610,15 @@ const themeToggleBtn = document.getElementById('themeToggleBtn');
 const themeIcon = document.getElementById('themeIcon');
 function applyTheme(isDim) {
     document.body.classList.toggle('dim-theme', isDim);
-    if (isDim) {
-        themeIcon.classList.remove('bi-moon-stars');
-        themeIcon.classList.add('bi-sun');
-    } else {
-        themeIcon.classList.remove('bi-sun');
-        themeIcon.classList.add('bi-moon-stars');
+    document.documentElement.classList.toggle('dim-theme', isDim);
+    if (themeIcon) {
+        if (isDim) {
+            themeIcon.classList.remove('bi-moon-stars');
+            themeIcon.classList.add('bi-sun');
+        } else {
+            themeIcon.classList.remove('bi-sun');
+            themeIcon.classList.add('bi-moon-stars');
+        }
     }
 }
 const isDimSaved = localStorage.getItem('sehatmart-dim') === 'true';
