@@ -49,8 +49,7 @@ $kolomTambahan = [
     'harga_beli' => "ALTER TABLE menu ADD COLUMN harga_beli INT NOT NULL DEFAULT 0 AFTER satuan",
     'stok_minimum' => "ALTER TABLE menu ADD COLUMN stok_minimum INT NOT NULL DEFAULT 5 AFTER stok",
     'tanggal_kedaluwarsa' => "ALTER TABLE menu ADD COLUMN tanggal_kedaluwarsa DATE NULL AFTER stok_minimum",
-    'nomor_batch' => "ALTER TABLE menu ADD COLUMN nomor_batch VARCHAR(100) NULL AFTER tanggal_kedaluwarsa",
-    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER nomor_batch"
+    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER tanggal_kedaluwarsa"
 ];
 
 foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {

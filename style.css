@@ -693,17 +693,6 @@ a:hover {
     gap: 4px;
 }
 
-.batch-tag {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: #eef3f0;
-    color: var(--ink);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.73rem;
-    font-weight: 600;
-}
-
 .table-category {
     display: inline-block;
     padding: 3px 8px;
@@ -733,6 +722,40 @@ a:hover {
 .stock-level small {
     color: var(--muted);
     font-size: 0.74rem;
+}
+
+.stock-adjust-controls {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.stock-adjust-form {
+    display: inline-flex;
+}
+
+.stock-adjust-btn {
+    width: 25px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--green-dark);
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.stock-adjust-btn:hover:not(:disabled) {
+    border-color: var(--green);
+    background: var(--green-soft);
+}
+
+.stock-adjust-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
 }
 
 .stock-badge {
@@ -1207,9 +1230,15 @@ body.dim-theme,
 .dim-theme .inventory-table tbody tr:hover {
     background: #23352a;
 }
-.dim-theme .batch-tag {
-    background: #293d31;
+.dim-theme .stock-adjust-btn {
+    background: #1a2820;
+    border-color: #3a4d41;
     color: #b7cebf;
+}
+
+.dim-theme .stock-adjust-btn:hover:not(:disabled) {
+    background: #293d31;
+    border-color: #668a72;
 }
 
 /* Responsive adjustments */

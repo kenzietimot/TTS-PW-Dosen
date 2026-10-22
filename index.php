@@ -1,6 +1,70 @@
 <?php
 require_once 'koneksi.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $updateStatus = 'stock_error';
+    $postedToken = $_POST['csrf_token'] ?? '';
+    $stockId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    $stockAction = $_POST['stock_action'] ?? '';
+
+    if (
+        is_string($postedToken)
+        && hash_equals($_SESSION['csrf_token'], $postedToken)
+        && $stockId !== false
+        && $stockId !== null
+        && $stockId > 0
+        && is_string($stockAction)
+        && in_array($stockAction, ['plus', 'minus'], true)
+    ) {
+        try {
+            if ($stockAction === 'plus') {
+                $stmt = $conn->prepare('UPDATE menu SET stok = stok + 1 WHERE id = ? AND stok < 2147483647');
+            } else {
+                $stmt = $conn->prepare('UPDATE menu SET stok = stok - 1 WHERE id = ? AND stok > 0');
+            }
+
+            $stmt->bind_param('i', $stockId);
+            $stmt->execute();
+            $affectedRows = $stmt->affected_rows;
+            $stmt->close();
+
+            if ($affectedRows === 1) {
+                $updateStatus = 'stock_updated';
+            } else {
+                $checkStmt = $conn->prepare('SELECT id FROM menu WHERE id = ?');
+                $checkStmt->bind_param('i', $stockId);
+                $checkStmt->execute();
+                $checkStmt->store_result();
+                $updateStatus = $checkStmt->num_rows === 1 ? 'stock_unchanged' : 'stock_error';
+                $checkStmt->close();
+            }
+        } catch (Throwable $exception) {
+            error_log($exception->getMessage());
+            $updateStatus = 'stock_error';
+        }
+    }
+
+    $redirectParams = [];
+    parse_str((string) ($_SERVER['QUERY_STRING'] ?? ''), $redirectParams);
+    unset($redirectParams['status']);
+    $redirectQuery = http_build_query($redirectParams);
+    $redirectUrl = 'index.php' . ($redirectQuery !== '' ? '?' . $redirectQuery : '');
+    if ($redirectQuery !== '') {
+        header('Location: ' . $redirectUrl . '&status=' . rawurlencode($updateStatus) . '#tabel-inventaris');
+    } else {
+        header('Location: ' . $redirectUrl . '?status=' . rawurlencode($updateStatus) . '#tabel-inventaris');
+    }
+    exit();
+}
+
 // Cek dan tangkap input filter
 $searchInput   = $_GET['search'] ?? '';
 $categoryInput  = $_GET['kategori'] ?? '';
@@ -67,17 +131,16 @@ $kpi = $summaryResult ? $summaryResult->fetch_assoc() : [
 ];
 
 // 2. Susun Query Filter Inventaris
-$sql = "SELECT * FROM menu WHERE 1=1";
+$sql = "SELECT id, nama_menu, kategori, merek, satuan, harga_beli, harga, stok, stok_minimum, tanggal_kedaluwarsa, deskripsi FROM menu WHERE 1=1";
 $params = [];
 $types = '';
 
 if ($search !== '') {
-    $sql .= " AND (nama_menu LIKE ? OR merek LIKE ? OR nomor_batch LIKE ?)";
+    $sql .= " AND (nama_menu LIKE ? OR merek LIKE ?)";
     $searchWildcard = '%' . $search . '%';
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
-    $params[] = $searchWildcard;
-    $types .= 'sss';
+    $types .= 'ss';
 }
 
 if ($kategori !== '') {
@@ -134,10 +197,14 @@ $escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''),
 $statusMessages = [
     'add_success' => 'Produk inventaris baru berhasil ditambahkan.',
     'edit_success' => 'Data inventaris berhasil diperbarui.',
-    'delete_success' => 'Item produk berhasil dihapus dari sistem inventaris.'
+    'delete_success' => 'Item produk berhasil dihapus dari sistem inventaris.',
+    'stock_updated' => 'Jumlah stok berhasil diperbarui.',
+    'stock_unchanged' => 'Stok tidak berubah karena sudah mencapai batas minimum atau maksimum.',
+    'stock_error' => 'Stok tidak dapat diperbarui. Muat ulang halaman dan coba lagi.'
 ];
 
 $today = new DateTimeImmutable('today');
+$queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -198,7 +265,7 @@ $today = new DateTimeImmutable('today');
                 <div>
                     <span class="eyebrow"><i class="bi bi-clipboard2-pulse"></i> Manajemen Logistik & Tata Kelola Obat</span>
                     <h1>Penataan Inventaris Apotek</h1>
-                    <p>Monitoring stok fisik, masa kedaluwarsa batch obat, batas minimum pemesanan kembali (reorder point), dan valuasi aset farmasi secara real-time.</p>
+                    <p>Monitoring stok fisik, masa kedaluwarsa produk, batas minimum pemesanan kembali (reorder point), dan valuasi aset farmasi secara real-time.</p>
                 </div>
                 <div class="hero-actions no-print">
                     <a href="tambah.php" class="btn btn-primary-green">
@@ -296,7 +363,7 @@ $today = new DateTimeImmutable('today');
                 <form method="GET" action="index.php#tabel-inventaris" class="toolbar-form" role="search">
                     <div class="search-input-wrap">
                         <i class="bi bi-search"></i>
-                        <input type="search" name="search" placeholder="Cari nama obat, merek pabrik, atau nomor batch..." value="<?= $escape($search); ?>">
+                        <input type="search" name="search" placeholder="Cari nama obat atau merek pabrik..." value="<?= $escape($search); ?>">
                     </div>
 
                     <div>
@@ -364,7 +431,6 @@ $today = new DateTimeImmutable('today');
                                 <th style="width: 50px;" class="text-center">No</th>
                                 <th>Produk & Merek</th>
                                 <th>Kategori</th>
-                                <th>Batch / Kemasan</th>
                                 <th>Level Stok & Status</th>
                                 <th>Harga Beli / Jual</th>
                                 <th>Masa Kedaluwarsa</th>
@@ -380,7 +446,6 @@ $today = new DateTimeImmutable('today');
                                     $satuan = $item['satuan'] ?? 'pcs';
                                     $hargaBeli = isset($item['harga_beli']) ? (int) $item['harga_beli'] : 0;
                                     $hargaJual = (int) $item['harga'];
-                                    $batch = $item['nomor_batch'] ?? '-';
                                     $expDate = $item['tanggal_kedaluwarsa'] ?? null;
 
                                     // Evaluasi Status Stok
@@ -441,12 +506,6 @@ $today = new DateTimeImmutable('today');
                                             <span class="table-category"><?= $escape($item['kategori']); ?></span>
                                         </td>
                                         <td>
-                                            <div class="d-flex flex-column gap-1">
-                                                <span class="batch-tag"><?= $escape($batch !== '' ? $batch : '-'); ?></span>
-                                                <small class="text-muted">Satuan: <strong><?= $escape($satuan); ?></strong></small>
-                                            </div>
-                                        </td>
-                                        <td>
                                             <div class="stock-wrap">
                                                 <div class="stock-level">
                                                     <span><?= number_format($stok, 0, ',', '.'); ?></span>
@@ -456,6 +515,22 @@ $today = new DateTimeImmutable('today');
                                                     <i class="bi <?= $stockIcon; ?>"></i> <?= $stockLabel; ?>
                                                 </span>
                                                 <small class="text-muted" style="font-size: .68rem;">Min: <?= $stokMin; ?> <?= $escape($satuan); ?></small>
+                                                <div class="stock-adjust-controls no-print" aria-label="Ubah stok <?= $escape($item['nama_menu']); ?>">
+                                                    <form method="post" action="index.php<?= $queryString !== '' ? '?' . $escape($queryString) : ''; ?>#tabel-inventaris" class="stock-adjust-form">
+                                                        <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['csrf_token']); ?>">
+                                                        <input type="hidden" name="id" value="<?= (int) $item['id']; ?>">
+                                                        <button type="submit" name="stock_action" value="minus" class="stock-adjust-btn" title="Kurangi stok" aria-label="Kurangi satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok === 0 ? 'disabled' : ''; ?>>
+                                                            <i class="bi bi-dash-lg"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" action="index.php<?= $queryString !== '' ? '?' . $escape($queryString) : ''; ?>#tabel-inventaris" class="stock-adjust-form">
+                                                        <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['csrf_token']); ?>">
+                                                        <input type="hidden" name="id" value="<?= (int) $item['id']; ?>">
+                                                        <button type="submit" name="stock_action" value="plus" class="stock-adjust-btn" title="Tambah stok" aria-label="Tambah satu <?= $escape($satuan); ?> untuk <?= $escape($item['nama_menu']); ?>" <?= $stok >= 2147483647 ? 'disabled' : ''; ?>>
+                                                            <i class="bi bi-plus-lg"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </div>
                                         </td>
                                         <td>
@@ -484,7 +559,7 @@ $today = new DateTimeImmutable('today');
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="8" class="p-0">
+                                    <td colspan="7" class="p-0">
                                         <div class="inventory-empty">
                                             <div class="inventory-empty-icon"><i class="bi bi-inbox"></i></div>
                                             <h3>Tidak Ada Data Inventaris</h3>
@@ -523,10 +598,6 @@ $today = new DateTimeImmutable('today');
                     <div class="col-6">
                         <small class="text-muted d-block">Merek / Pabrik</small>
                         <strong id="detailMerek">-</strong>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Nomor Batch / Lot</small>
-                        <span class="batch-tag" id="detailBatch">-</span>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Stok Saat Ini</small>
@@ -603,7 +674,6 @@ function showItemDetail(item) {
     document.getElementById('detailNama').textContent = item.nama_menu || '-';
     document.getElementById('detailKategori').textContent = item.kategori || 'OBAT';
     document.getElementById('detailMerek').textContent = item.merek || 'Generik / Tanpa Merek';
-    document.getElementById('detailBatch').textContent = item.nomor_batch || '-';
     document.getElementById('detailStok').textContent = `${Number(item.stok).toLocaleString('id-ID')} ${item.satuan || 'pcs'}`;
     document.getElementById('detailMinStok').textContent = `${Number(item.stok_minimum || 5).toLocaleString('id-ID')} ${item.satuan || 'pcs'}`;
     document.getElementById('detailHargaBeli').textContent = `Rp ${currency.format(Number(item.harga_beli || 0))}`;
@@ -683,9 +753,9 @@ themeToggleBtn.addEventListener('click', () => {
 // Alert Notifikasi Operasi
 <?php if (isset($statusMessages[$alertStatus])): ?>
 Swal.fire({
-    title: 'Sukses!',
+    title: <?= json_encode($alertStatus === 'stock_error' ? 'Gagal!' : ($alertStatus === 'stock_unchanged' ? 'Stok Tidak Berubah' : 'Berhasil!')); ?>,
     text: <?= json_encode($statusMessages[$alertStatus]); ?>,
-    icon: 'success',
+    icon: <?= json_encode($alertStatus === 'stock_error' ? 'error' : ($alertStatus === 'stock_unchanged' ? 'warning' : 'success')); ?>,
     confirmButtonColor: '#267b58'
 });
 <?php endif; ?>

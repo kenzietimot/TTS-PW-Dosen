@@ -38,8 +38,7 @@ $kolomTambahan = [
     'harga_beli' => "ALTER TABLE menu ADD COLUMN harga_beli INT NOT NULL DEFAULT 0 AFTER satuan",
     'stok_minimum' => "ALTER TABLE menu ADD COLUMN stok_minimum INT NOT NULL DEFAULT 5 AFTER stok",
     'tanggal_kedaluwarsa' => "ALTER TABLE menu ADD COLUMN tanggal_kedaluwarsa DATE NULL AFTER stok_minimum",
-    'nomor_batch' => "ALTER TABLE menu ADD COLUMN nomor_batch VARCHAR(100) NULL AFTER tanggal_kedaluwarsa",
-    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER nomor_batch"
+    'deskripsi' => "ALTER TABLE menu ADD COLUMN deskripsi TEXT NULL AFTER tanggal_kedaluwarsa"
 ];
 
 foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
@@ -62,7 +61,7 @@ foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
 
 $data = null;
 if ($schemaError === '') {
-    $stmt = $conn->prepare('SELECT * FROM menu WHERE id = ?');
+    $stmt = $conn->prepare('SELECT id, nama_menu, kategori, merek, satuan, harga_beli, harga, stok, stok_minimum, tanggal_kedaluwarsa, deskripsi FROM menu WHERE id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $data = $stmt->get_result()->fetch_assoc();
@@ -84,7 +83,6 @@ $form = [
     'stok' => (string) ($data['stok'] ?? '0'),
     'stok_minimum' => (string) ($data['stok_minimum'] ?? '5'),
     'tanggal_kedaluwarsa' => (string) ($data['tanggal_kedaluwarsa'] ?? ''),
-    'nomor_batch' => (string) ($data['nomor_batch'] ?? ''),
     'deskripsi' => (string) ($data['deskripsi'] ?? '')
 ];
 
@@ -110,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
     $stok = filter_var($form['stok'], FILTER_VALIDATE_INT);
     $stokMinimum = filter_var($form['stok_minimum'], FILTER_VALIDATE_INT);
     $tanggalInput = $form['tanggal_kedaluwarsa'];
-    $nomorBatch = $form['nomor_batch'];
     $deskripsi = $form['deskripsi'];
     $tanggalDb = null;
 
@@ -126,8 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
         $error = 'Harga dan stok harus berupa bilangan bulat yang valid.';
     } elseif ($hargaBeli < 0 || $hargaJual < 0 || $stok < 0 || $stokMinimum < 0) {
         $error = 'Harga dan jumlah stok tidak boleh bernilai negatif.';
-    } elseif ($nomorBatch !== '' && $textLength($nomorBatch) > 100) {
-        $error = 'Nomor batch maksimal 100 karakter.';
     } elseif ($textLength($deskripsi) > 2000) {
         $error = 'Deskripsi maksimal 2.000 karakter.';
     } else {
@@ -148,12 +143,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
 
     if ($error === '') {
         $merekDb = $merek !== '' ? $merek : null;
-        $batchDb = $nomorBatch !== '' ? $nomorBatch : null;
         $deskripsiDb = $deskripsi !== '' ? $deskripsi : null;
 
         try {
             $stmt = $conn->prepare(
-                'UPDATE menu SET nama_menu = ?, kategori = ?, merek = ?, satuan = ?, harga_beli = ?, harga = ?, stok = ?, stok_minimum = ?, tanggal_kedaluwarsa = ?, nomor_batch = ?, deskripsi = ? WHERE id = ?'
+                'UPDATE menu SET nama_menu = ?, kategori = ?, merek = ?, satuan = ?, harga_beli = ?, harga = ?, stok = ?, stok_minimum = ?, tanggal_kedaluwarsa = ?, deskripsi = ? WHERE id = ?'
             );
 
             if (!$stmt) {
@@ -161,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
             }
 
             $stmt->bind_param(
-                'ssssiiiisssi',
+                'ssssiiiissi',
                 $nama,
                 $kategori,
                 $merekDb,
@@ -171,7 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
                 $stok,
                 $stokMinimum,
                 $tanggalDb,
-                $batchDb,
                 $deskripsiDb,
                 $id
             );
@@ -227,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
     <div class="mb-4">
         <span class="eyebrow">PENGELOLAAN INVENTARIS</span>
         <h1 class="h2 fw-bold mt-2 mb-2">Edit produk apotek</h1>
-        <p class="text-secondary mb-0">Perbarui informasi, harga, stok, serta data batch dan kedaluwarsa produk.</p>
+        <p class="text-secondary mb-0">Perbarui informasi, harga, stok, dan tanggal kedaluwarsa produk.</p>
     </div>
 
     <?php if ($schemaError !== ''): ?>
@@ -299,12 +292,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
             </div>
 
             <hr class="my-4">
-            <h2 class="h5 fw-bold mb-3"><i class="bi bi-upc-scan text-success me-2"></i>Batch dan kedaluwarsa</h2>
+            <h2 class="h5 fw-bold mb-3"><i class="bi bi-calendar-check text-success me-2"></i>Kedaluwarsa</h2>
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label for="nomor_batch" class="form-label">Nomor batch</label>
-                    <input id="nomor_batch" name="nomor_batch" type="text" class="form-control" maxlength="100" value="<?= $escape($form['nomor_batch']); ?>" placeholder="Contoh: BATCH-001">
-                </div>
                 <div class="col-md-6">
                     <label for="tanggal_kedaluwarsa" class="form-label">Tanggal kedaluwarsa</label>
                     <input id="tanggal_kedaluwarsa" name="tanggal_kedaluwarsa" type="date" class="form-control" value="<?= $escape($form['tanggal_kedaluwarsa']); ?>">
@@ -318,7 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
             </div>
         </div>
     </form>
-    <p class="small text-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Field bertanda * wajib diisi. Informasi batch dan kedaluwarsa bersifat opsional.</p>
+    <p class="small text-secondary mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>Field bertanda * wajib diisi. Tanggal kedaluwarsa bersifat opsional.</p>
 </main>
 
 <!-- MODAL KONFIRMASI KEBIJAKAN STOK (< 5 UNIT) -->
