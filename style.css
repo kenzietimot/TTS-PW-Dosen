@@ -12,6 +12,8 @@
     --green-dark: #18553d;
     --green-soft: #e8f4ed;         /* Light surface highlights */
     --mint: #f1f7f3;               /* Neutral background accents */
+    --color-accent-green: #70D9A0;
+    --color-accent-green-strong: #56c78a;
 
     /* Neutrals & Typography */
     --ink: #192820;                /* Primary text color */
@@ -637,6 +639,7 @@ a:hover {
 .inventory-table {
     margin-bottom: 0;
     font-size: 0.85rem;
+    border-color: var(--line);
 }
 
 .inventory-table thead {
@@ -652,12 +655,18 @@ a:hover {
     font-weight: 750;
     border-bottom: 1px solid var(--line);
     white-space: nowrap;
+    background: var(--table-head-bg);
 }
 
 .inventory-table td {
     padding: 12px 14px;
     border-color: #e9f0ec;
     vertical-align: middle;
+    background-color: transparent;
+}
+
+.inventory-table tbody tr {
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .inventory-table tbody tr:hover {
@@ -666,6 +675,16 @@ a:hover {
 
 .inventory-table tbody tr:hover > * {
     background-color: var(--table-row-hover-bg);
+}
+
+.inventory-table tbody tr.selected,
+.inventory-table tbody tr.active {
+    background-color: rgba(113, 216, 157, 0.08);
+}
+
+.inventory-table tbody tr.selected > td,
+.inventory-table tbody tr.active > td {
+    background-color: rgba(113, 216, 157, 0.08);
 }
 
 /* Table Item Cells & Badges */
@@ -794,8 +813,29 @@ a:hover {
     flex-direction: column;
 }
 
-.price-sell { font-weight: 750; color: var(--green-dark); font-size: 0.86rem; }
+.price-sell {
+    font-weight: 750;
+    color: var(--color-accent-green);
+    font-size: 0.86rem;
+}
+
 .price-buy  { font-size: 0.73rem; color: var(--muted); }
+
+.detail-stock-value,
+#detailStok,
+.detail-price-value,
+#detailHargaJual,
+.stock-value,
+.selling-price-value {
+    color: var(--color-accent-green) !important;
+}
+
+.detail-note-box,
+#detailDeskripsi {
+    background: rgba(26, 40, 32, 0.03);
+    border-color: var(--line);
+    color: var(--ink);
+}
 
 /* Table Actions */
 .action-buttons {
@@ -1066,8 +1106,81 @@ a:hover {
     overflow: hidden;
 }
 
-.modal-header { background: var(--surface-secondary); border-bottom: 1px solid var(--line); padding: 1.1rem 1.35rem; }
-.modal-footer { border-top: 1px solid var(--line); padding: 0.85rem 1.35rem; }
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--surface-secondary);
+    border-bottom: 1px solid var(--line);
+    padding: 1.1rem 1.35rem;
+}
+
+.modal-header .btn-close,
+.modal-close-button {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 0.7rem;
+    background-color: var(--white);
+    background-image: none;
+    opacity: 1;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    position: relative;
+    transform: none;
+    transition: all var(--transition-fast);
+    color: var(--ink);
+}
+
+.modal-close-button i,
+.modal-close-button svg {
+    display: block;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.modal-header .btn-close:hover,
+.modal-close-button:hover {
+    background-color: var(--green-soft);
+    border-color: var(--green);
+    color: var(--green-dark);
+    box-shadow: 0 0 0 3px rgba(38, 123, 88, 0.08);
+}
+
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-top: 1px solid var(--line);
+    padding: 0.85rem 1.35rem;
+    background: var(--surface-secondary);
+}
+
+.modal-footer .btn {
+    min-height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 0;
+}
+
+.modal-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
 
 .site-footer {
     padding: 20px 0;
@@ -1107,6 +1220,8 @@ body.dim-theme,
     --green-dark: #91e6b4;
     --green-soft: #1d382b;
     --mint: #15221a;
+    --color-accent-green: #70D9A0;
+    --color-accent-green-strong: #9eeac0;
 
     --coral: #ff8e86;
     --coral-soft: #3b1c1c;
@@ -1229,6 +1344,21 @@ body.dim-theme,
 }
 .dim-theme .inventory-table tbody tr:hover {
     background: #23352a;
+}
+.dim-theme .modal-close-button,
+.dim-theme .modal-header .btn-close {
+    background-color: #1a2820;
+    border-color: #3a4d41;
+    color: #dfeae4;
+}
+.dim-theme .modal-close-button:hover,
+.dim-theme .modal-header .btn-close:hover {
+    background-color: #1d382b;
+    border-color: #71d89d;
+    color: #91e6b4;
+}
+.dim-theme .modal-footer {
+    background: #1f3027;
 }
 html.dim-theme .filter-pills .pill-badge {
     min-width: 22px;

@@ -591,7 +591,9 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     <span class="eyebrow" id="detailKategori">KATEGORI OBAT</span>
                     <h2 class="modal-title h5 mb-0 fw-bold" id="detailNama">Nama Produk</h2>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                <button type="button" class="modal-close-button" data-bs-dismiss="modal" aria-label="Tutup">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             <div class="modal-body p-4">
                 <div class="row g-3">
@@ -601,7 +603,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Stok Saat Ini</small>
-                        <strong class="text-success h5 mb-0" id="detailStok">-</strong>
+                        <strong class="detail-stock-value h5 mb-0" id="detailStok">-</strong>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Batas Reorder Minimum</small>
@@ -613,7 +615,7 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Harga Jual Satuan</small>
-                        <strong class="text-primary" id="detailHargaJual">-</strong>
+                        <strong class="detail-price-value" id="detailHargaJual">-</strong>
                     </div>
                     <div class="col-12">
                         <small class="text-muted d-block">Tanggal Kedaluwarsa</small>
@@ -621,11 +623,11 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                     </div>
                     <div class="col-12">
                         <small class="text-muted d-block">Deskripsi / Catatan Rak Penyimpanan</small>
-                        <div class="p-3 bg-light rounded mt-1 border text-secondary" id="detailDeskripsi" style="font-size: .88rem; white-space: pre-wrap;">-</div>
+                        <div class="detail-note-box p-3 rounded mt-1 border" id="detailDeskripsi" style="font-size: .88rem; white-space: pre-wrap;">-</div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-top bg-light">
+            <div class="modal-footer border-top">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
                 <a href="#" id="detailEditBtn" class="btn btn-primary-green btn-sm">
                     <i class="bi bi-pencil me-1"></i> Edit Data Ini
