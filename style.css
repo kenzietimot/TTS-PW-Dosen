@@ -1230,6 +1230,38 @@ body.dim-theme,
 .dim-theme .inventory-table tbody tr:hover {
     background: #23352a;
 }
+.dim-theme .pill-badge {
+    background: #3b6049;
+    color: #edfff3;
+}
+.dim-theme .pill-tab.active .pill-badge {
+    background: #4a7258;
+    color: #ffffff;
+}
+.dim-theme .stock-badge-safe {
+    background: #315b3d;
+    color: #c8f5d0;
+}
+.dim-theme .stock-badge-warn {
+    background: #6a542b;
+    color: #ffedbd;
+}
+.dim-theme .stock-badge-danger {
+    background: #633936;
+    color: #ffd0ca;
+}
+.dim-theme .exp-safe {
+    background: #315b49;
+    color: #d2f5df;
+}
+.dim-theme .exp-warning {
+    background: #6a542b;
+    color: #ffedbd;
+}
+.dim-theme .exp-danger {
+    background: #633936;
+    color: #ffd0ca;
+}
 .dim-theme .stock-adjust-btn {
     background: #1a2820;
     border-color: #3a4d41;
