@@ -1230,13 +1230,21 @@ body.dim-theme,
 .dim-theme .inventory-table tbody tr:hover {
     background: #23352a;
 }
-.dim-theme .pill-badge {
-    background: #3b6049;
-    color: #edfff3;
-}
-.dim-theme .pill-tab.active .pill-badge {
-    background: #4a7258;
-    color: #ffffff;
+html.dim-theme .filter-pills .pill-badge {
+    min-width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border: 1px solid #a9e6bc;
+    border-radius: 11px;
+    background: #267b58 !important;
+    color: #ffffff !important;
+    font-size: 0.75rem;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 .dim-theme .stock-badge-safe {
     background: #315b3d;
