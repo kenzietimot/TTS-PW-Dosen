@@ -397,12 +397,12 @@ $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
                         </select>
                     </div>
 
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary-green btn-sm px-3">
+                    <div class="d-flex gap-2 align-items-center">
+                        <button type="submit" class="btn btn-primary-green btn-sm px-3 btn-apply-filter">
                             <i class="bi bi-funnel"></i> Terapkan
                         </button>
                         <?php if ($search !== '' || $kategori !== '' || $statusStok !== 'semua' || $sort !== 'terbaru'): ?>
-                            <a href="index.php#tabel-inventaris" class="btn btn-outline-secondary btn-sm" title="Reset filter">
+                            <a href="index.php#tabel-inventaris" class="btn btn-outline-secondary btn-sm btn-reset-filter" title="Reset filter" aria-label="Reset filter">
                                 <i class="bi bi-x-lg"></i>
                             </a>
                         <?php endif; ?>
