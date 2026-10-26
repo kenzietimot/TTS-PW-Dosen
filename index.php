@@ -1,4 +1,8 @@
 <?php
+/**
+ * index.php - Halaman Utama Sistem Inventaris Apotek SehatMart
+ * UTS Pemrograman Web — PHP Native, MySQL, tanpa Framework
+ */
 require_once 'koneksi.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -8,6 +12,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
+
+// Tabel aktif dari koneksi.php
+$tbl = $tableBarang ?? 'menu';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $updateStatus = 'stock_error';
@@ -30,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stockAction === 'set_stock') {
                 $newStock = filter_input(INPUT_POST, 'new_stock', FILTER_VALIDATE_INT);
                 if ($newStock !== false && $newStock !== null && $newStock >= 0 && $newStock <= 2147483647) {
-                    $stmt = $conn->prepare('UPDATE menu SET stok = ? WHERE id = ?');
-                    $stmt->bind_param('ii', $newStock, $stockId);
+                    $stmt = $conn->prepare("UPDATE `{$tbl}` SET jumlah = ?, stok = ? WHERE id = ?");
+                    $stmt->bind_param('iii', $newStock, $newStock, $stockId);
                     $stmt->execute();
                     $stmt->close();
                     $executed = true;
@@ -39,20 +46,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($stockAction === 'adjust') {
                 $delta = filter_input(INPUT_POST, 'delta', FILTER_VALIDATE_INT);
                 if ($delta !== false && $delta !== null) {
-                    $stmt = $conn->prepare('UPDATE menu SET stok = GREATEST(0, LEAST(2147483647, stok + ?)) WHERE id = ?');
-                    $stmt->bind_param('ii', $delta, $stockId);
+                    $stmt = $conn->prepare("UPDATE `{$tbl}` SET jumlah = GREATEST(0, LEAST(2147483647, COALESCE(jumlah,stok) + ?)), stok = GREATEST(0, LEAST(2147483647, stok + ?)) WHERE id = ?");
+                    $stmt->bind_param('iii', $delta, $delta, $stockId);
                     $stmt->execute();
                     $stmt->close();
                     $executed = true;
                 }
             } elseif ($stockAction === 'plus') {
-                $stmt = $conn->prepare('UPDATE menu SET stok = stok + 1 WHERE id = ? AND stok < 2147483647');
+                $stmt = $conn->prepare("UPDATE `{$tbl}` SET jumlah = jumlah + 1, stok = stok + 1 WHERE id = ? AND stok < 2147483647");
                 $stmt->bind_param('i', $stockId);
                 $stmt->execute();
                 $stmt->close();
                 $executed = true;
             } elseif ($stockAction === 'minus') {
-                $stmt = $conn->prepare('UPDATE menu SET stok = stok - 1 WHERE id = ? AND stok > 0');
+                $stmt = $conn->prepare("UPDATE `{$tbl}` SET jumlah = GREATEST(0, jumlah - 1), stok = stok - 1 WHERE id = ? AND stok > 0");
                 $stmt->bind_param('i', $stockId);
                 $stmt->execute();
                 $stmt->close();
@@ -60,7 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($executed) {
-                $itemStmt = $conn->prepare('SELECT id, nama_menu, stok, stok_minimum, satuan, kategori, harga, harga_beli, merek, deskripsi, tanggal_kedaluwarsa FROM menu WHERE id = ?');
+                $itemStmt = $conn->prepare(
+                    "SELECT id,
+                            COALESCE(NULLIF(nama_barang,''), nama_menu) AS nama_menu,
+                            COALESCE(jumlah, stok) AS stok,
+                            stok_minimum, satuan, kategori, harga, harga_beli, merek, deskripsi, tanggal_kedaluwarsa
+                     FROM `{$tbl}` WHERE id = ?"
+                );
                 $itemStmt->bind_param('i', $stockId);
                 $itemStmt->execute();
                 $updatedItem = $itemStmt->get_result()->fetch_assoc();
@@ -87,14 +100,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $stockIcon = 'bi-check-circle-fill';
                         }
 
-                        $kpiQuery = "SELECT 
+                        $kpiQuery = "SELECT
                             COUNT(*) AS total_sku,
-                            COALESCE(SUM(stok), 0) AS total_unit,
-                            COALESCE(SUM(CASE WHEN stok > 0 AND stok <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
-                            COALESCE(SUM(CASE WHEN stok = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
+                            COALESCE(SUM(COALESCE(jumlah,stok)), 0) AS total_unit,
+                            COALESCE(SUM(CASE WHEN COALESCE(jumlah,stok) > 0 AND COALESCE(jumlah,stok) <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
+                            COALESCE(SUM(CASE WHEN COALESCE(jumlah,stok) = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
                             COALESCE(SUM(CASE WHEN tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END), 0) AS total_exp_alert,
-                            COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * stok ELSE harga * stok END), 0) AS total_nilai_aset
-                        FROM menu";
+                            COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * COALESCE(jumlah,stok) ELSE harga * COALESCE(jumlah,stok) END), 0) AS total_nilai_aset
+                        FROM `{$tbl}`";
                         $kpiRes = $conn->query($kpiQuery);
                         $kpiData = $kpiRes ? $kpiRes->fetch_assoc() : null;
 
@@ -198,36 +211,41 @@ if ($kategori !== '' && !in_array($kategori, $allowedCategories, true)) {
 }
 
 // 1. Ambil Ringkasan Metrik Inventaris (KPI Keseluruhan)
-$summaryQuery = "SELECT 
+$summaryQuery = "SELECT
     COUNT(*) AS total_sku,
-    COALESCE(SUM(stok), 0) AS total_unit,
-    COALESCE(SUM(CASE WHEN stok > 0 AND stok <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
-    COALESCE(SUM(CASE WHEN stok = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
+    COALESCE(SUM(COALESCE(jumlah, stok)), 0) AS total_unit,
+    COALESCE(SUM(CASE WHEN COALESCE(jumlah,stok) > 0 AND COALESCE(jumlah,stok) <= stok_minimum THEN 1 ELSE 0 END), 0) AS total_menipis,
+    COALESCE(SUM(CASE WHEN COALESCE(jumlah,stok) = 0 THEN 1 ELSE 0 END), 0) AS total_habis,
     COALESCE(SUM(CASE WHEN tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa <= DATE_ADD(CURDATE(), INTERVAL 90 DAY) THEN 1 ELSE 0 END), 0) AS total_exp_alert,
-    COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * stok ELSE harga * stok END), 0) AS total_nilai_aset
-FROM menu";
+    COALESCE(SUM(CASE WHEN harga_beli > 0 THEN harga_beli * COALESCE(jumlah,stok) ELSE harga * COALESCE(jumlah,stok) END), 0) AS total_nilai_aset
+FROM `{$tbl}`";
 
 $summaryResult = $conn->query($summaryQuery);
 $kpi = $summaryResult ? $summaryResult->fetch_assoc() : [
-    'total_sku' => 0,
-    'total_unit' => 0,
-    'total_menipis' => 0,
-    'total_habis' => 0,
+    'total_sku'       => 0,
+    'total_unit'      => 0,
+    'total_menipis'   => 0,
+    'total_habis'     => 0,
     'total_exp_alert' => 0,
-    'total_nilai_aset' => 0
+    'total_nilai_aset'=> 0
 ];
 
 // 2. Susun Query Filter Inventaris
-$sql = "SELECT id, nama_menu, kategori, merek, satuan, harga_beli, harga, stok, stok_minimum, tanggal_kedaluwarsa, deskripsi FROM menu WHERE 1=1";
+$sql = "SELECT id,
+        COALESCE(NULLIF(nama_barang,''), nama_menu) AS nama_menu,
+        kategori, merek, satuan, harga_beli, harga,
+        COALESCE(jumlah, stok) AS stok, stok_minimum, tanggal_kedaluwarsa, deskripsi
+    FROM `{$tbl}` WHERE 1=1";
 $params = [];
 $types = '';
 
 if ($search !== '') {
-    $sql .= " AND (nama_menu LIKE ? OR merek LIKE ?)";
+    $sql .= " AND (nama_barang LIKE ? OR nama_menu LIKE ? OR merek LIKE ?)";
     $searchWildcard = '%' . $search . '%';
     $params[] = $searchWildcard;
     $params[] = $searchWildcard;
-    $types .= 'ss';
+    $params[] = $searchWildcard;
+    $types .= 'sss';
 }
 
 if ($kategori !== '') {
@@ -237,11 +255,11 @@ if ($kategori !== '') {
 }
 
 if ($statusStok === 'menipis') {
-    $sql .= " AND (stok > 0 AND stok <= stok_minimum)";
+    $sql .= " AND (COALESCE(jumlah,stok) > 0 AND COALESCE(jumlah,stok) <= stok_minimum)";
 } elseif ($statusStok === 'habis') {
-    $sql .= " AND stok = 0";
+    $sql .= " AND COALESCE(jumlah,stok) = 0";
 } elseif ($statusStok === 'aman') {
-    $sql .= " AND stok > stok_minimum";
+    $sql .= " AND COALESCE(jumlah,stok) > stok_minimum";
 } elseif ($statusStok === 'kedaluwarsa') {
     $sql .= " AND tanggal_kedaluwarsa IS NOT NULL AND tanggal_kedaluwarsa < CURDATE()";
 } elseif ($statusStok === 'segera_kedaluwarsa') {
@@ -253,10 +271,10 @@ switch ($sort) {
         $sql .= " ORDER BY nama_menu ASC";
         break;
     case 'stok_asc':
-        $sql .= " ORDER BY stok ASC, id DESC";
+        $sql .= " ORDER BY COALESCE(jumlah,stok) ASC, id DESC";
         break;
     case 'stok_desc':
-        $sql .= " ORDER BY stok DESC, id DESC";
+        $sql .= " ORDER BY COALESCE(jumlah,stok) DESC, id DESC";
         break;
     case 'exp_asc':
         $sql .= " ORDER BY (tanggal_kedaluwarsa IS NULL), tanggal_kedaluwarsa ASC";
@@ -281,14 +299,24 @@ $stmt->close();
 
 $escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 
+// Gabungkan session flash dan URL status untuk notifikasi SweetAlert2
 $statusMessages = [
-    'add_success' => 'Produk inventaris baru berhasil ditambahkan.',
-    'edit_success' => 'Data inventaris berhasil diperbarui.',
+    'add_success'    => 'Produk inventaris baru berhasil ditambahkan.',
+    'edit_success'   => 'Data inventaris berhasil diperbarui.',
     'delete_success' => 'Item produk berhasil dihapus dari sistem inventaris.',
-    'stock_updated' => 'Jumlah stok berhasil diperbarui.',
-    'stock_unchanged' => 'Stok tidak berubah karena sudah mencapai batas minimum atau maksimum.',
-    'stock_error' => 'Stok tidak dapat diperbarui. Muat ulang halaman dan coba lagi.'
+    'stock_updated'  => 'Jumlah stok berhasil diperbarui.',
+    'stock_unchanged'=> 'Stok tidak berubah karena sudah mencapai batas minimum atau maksimum.',
+    'stock_error'    => 'Stok tidak dapat diperbarui. Muat ulang halaman dan coba lagi.'
 ];
+
+// Prioritaskan session flash (lebih informatif, berisi nama barang)
+$sessionFlash = null;
+if (isset($_SESSION['flash'])) {
+    $sessionFlash = $_SESSION['flash'];
+    unset($_SESSION['flash']);
+}
+
+$alertStatus = $_GET['status'] ?? '';
 
 $today = new DateTimeImmutable('today');
 $queryString = (string) ($_SERVER['QUERY_STRING'] ?? '');
@@ -1135,13 +1163,24 @@ themeToggleBtn.addEventListener('click', () => {
     });
 })();
 
-// Alert Notifikasi Operasi
-<?php if (isset($statusMessages[$alertStatus])): ?>
+// Alert Notifikasi Operasi — Prioritas: Session Flash > URL Status
+<?php if ($sessionFlash !== null): ?>
+Swal.fire({
+    title: <?= json_encode($sessionFlash['title'] ?? 'Info'); ?>,
+    text: <?= json_encode($sessionFlash['message'] ?? ''); ?>,
+    icon: <?= json_encode($sessionFlash['type'] ?? 'info'); ?>,
+    confirmButtonColor: '#267b58',
+    timer: 4000,
+    timerProgressBar: true
+});
+<?php elseif (isset($statusMessages[$alertStatus])): ?>
 Swal.fire({
     title: <?= json_encode($alertStatus === 'stock_error' ? 'Gagal!' : ($alertStatus === 'stock_unchanged' ? 'Stok Tidak Berubah' : 'Berhasil!')); ?>,
     text: <?= json_encode($statusMessages[$alertStatus]); ?>,
     icon: <?= json_encode($alertStatus === 'stock_error' ? 'error' : ($alertStatus === 'stock_unchanged' ? 'warning' : 'success')); ?>,
-    confirmButtonColor: '#267b58'
+    confirmButtonColor: '#267b58',
+    timer: 3500,
+    timerProgressBar: true
 });
 <?php endif; ?>
 </script>

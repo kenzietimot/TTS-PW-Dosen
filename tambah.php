@@ -121,42 +121,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
         $merekDb = $merek !== '' ? $merek : null;
         $deskripsiDb = $deskripsi !== '' ? $deskripsi : null;
 
+        // Gunakan nama tabel aktif dari koneksi.php ($tableBarang)
+        $tabelAktif = $tableBarang ?? 'menu';
+
         try {
             $stmt = $conn->prepare(
-                'INSERT INTO menu (nama_menu, kategori, merek, satuan, harga_beli, harga, stok, tanggal_kedaluwarsa, deskripsi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                "INSERT INTO `{$tabelAktif}` (nama_barang, nama_menu, kategori, merek, satuan, harga_beli, harga, jumlah, stok, tanggal_kedaluwarsa, deskripsi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
 
             if (!$stmt) {
-                throw new RuntimeException('Query tidak dapat disiapkan.');
+                throw new RuntimeException('Query tidak dapat disiapkan: ' . $conn->error);
             }
 
+            // nama_barang = nama_menu (alias standar UTS)
+            // jumlah = stok (alias standar UTS)
             $stmt->bind_param(
-                'ssssiiiss',
-                $nama,
+                'sssssiiisss',
+                $nama,    // nama_barang
+                $nama,    // nama_menu
                 $kategori,
                 $merekDb,
                 $satuan,
                 $hargaBeli,
                 $hargaJual,
-                $stok,
+                $stok,    // jumlah
+                $stok,    // stok
                 $tanggalDb,
                 $deskripsiDb
             );
             $stmt->execute();
+            $newId = (int) $conn->insert_id;
             $stmt->close();
+
+            // Sinkronkan ke tabel 'menu' jika tabel aktif bukan 'menu'
+            if ($tabelAktif !== 'menu') {
+                $checkMenu = $conn->query("SHOW TABLES LIKE 'menu'");
+                if ($checkMenu && $checkMenu->num_rows > 0) {
+                    $syncStmt = $conn->prepare(
+                        "INSERT INTO `menu` (id, nama_barang, nama_menu, kategori, merek, satuan, harga_beli, harga, jumlah, stok, tanggal_kedaluwarsa, deskripsi)
+                         SELECT id, nama_barang, nama_menu, kategori, merek, satuan, harga_beli, harga, jumlah, stok, tanggal_kedaluwarsa, deskripsi
+                         FROM `{$tabelAktif}` WHERE id = ?"
+                    );
+                    if ($syncStmt) {
+                        $syncStmt->bind_param('i', $newId);
+                        $syncStmt->execute();
+                        $syncStmt->close();
+                    }
+                }
+            }
+
+            // Session flash message untuk notifikasi sukses di index.php
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+            $_SESSION['flash'] = [
+                'type'    => 'success',
+                'title'   => 'Berhasil Ditambahkan!',
+                'message' => 'Barang "' . $nama . '" berhasil ditambahkan ke inventaris apotek.'
+            ];
 
             header('Location: index.php?status=add_success');
             exit();
         } catch (Throwable $exception) {
             error_log($exception->getMessage());
-            $error = 'Produk gagal disimpan. Pastikan struktur tabel menu sudah siap dan data yang dimasukkan valid.';
+            $error = 'Produk gagal disimpan. Pastikan struktur tabel sudah siap dan data yang dimasukkan valid. Detail: ' . $exception->getMessage();
         }
     }
 }
 
-// Ambil data produk yang stoknya kritis (< 5 unit) untuk notifikasi cepat Restok / Hapus
+// Ambil data produk yang stoknya kritis (< 5 unit) untuk notifikasi cepat
+$tabelAktif = $tableBarang ?? 'menu';
 $produkStokHabis = [];
-$resHabis = $conn->query("SELECT id, nama_menu, kategori, harga, satuan, stok FROM menu WHERE stok < 5 ORDER BY stok ASC, id DESC LIMIT 5");
+$resHabis = $conn->query("SELECT id, COALESCE(NULLIF(nama_barang,''), nama_menu) AS nama_menu, kategori, harga, satuan, COALESCE(jumlah, stok) AS stok FROM `{$tabelAktif}` WHERE COALESCE(jumlah, stok) < 5 ORDER BY stok ASC, id DESC LIMIT 5");
 if ($resHabis) {
     $produkStokHabis = $resHabis->fetch_all(MYSQLI_ASSOC);
     $resHabis->free();

@@ -59,9 +59,18 @@ foreach ($kolomTambahan as $namaKolom => $sqlTambahKolom) {
     }
 }
 
+$tabelAktif = $tableBarang ?? 'menu';
+
 $data = null;
 if ($schemaError === '') {
-    $stmt = $conn->prepare('SELECT id, nama_menu, kategori, merek, satuan, harga_beli, harga, stok, stok_minimum, tanggal_kedaluwarsa, deskripsi FROM menu WHERE id = ?');
+    $stmt = $conn->prepare(
+        "SELECT id,
+                COALESCE(NULLIF(nama_barang, ''), nama_menu) AS nama_menu,
+                kategori, merek, satuan, harga_beli, harga,
+                COALESCE(jumlah, stok) AS stok,
+                stok_minimum, tanggal_kedaluwarsa, deskripsi
+         FROM `{$tabelAktif}` WHERE id = ?"
+    );
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $data = $stmt->get_result()->fetch_assoc();
@@ -147,22 +156,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
 
         try {
             $stmt = $conn->prepare(
-                'UPDATE menu SET nama_menu = ?, kategori = ?, merek = ?, satuan = ?, harga_beli = ?, harga = ?, stok = ?, stok_minimum = ?, tanggal_kedaluwarsa = ?, deskripsi = ? WHERE id = ?'
+                "UPDATE `{$tabelAktif}` SET nama_barang = ?, nama_menu = ?, kategori = ?, merek = ?, satuan = ?, harga_beli = ?, harga = ?, jumlah = ?, stok = ?, stok_minimum = ?, tanggal_kedaluwarsa = ?, deskripsi = ? WHERE id = ?"
             );
 
             if (!$stmt) {
-                throw new RuntimeException('Query tidak dapat disiapkan.');
+                throw new RuntimeException('Query tidak dapat disiapkan: ' . $conn->error);
             }
 
             $stmt->bind_param(
-                'ssssiiiissi',
-                $nama,
+                'sssssiiiisssi',
+                $nama,         // nama_barang
+                $nama,         // nama_menu
                 $kategori,
                 $merekDb,
                 $satuan,
                 $hargaBeli,
                 $hargaJual,
-                $stok,
+                $stok,         // jumlah
+                $stok,         // stok
                 $stokMinimum,
                 $tanggalDb,
                 $deskripsiDb,
@@ -171,11 +182,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $schemaError === '') {
             $stmt->execute();
             $stmt->close();
 
+            // Sinkronkan ke tabel 'menu' jika tabel aktif bukan 'menu'
+            if ($tabelAktif !== 'menu') {
+                $checkMenu = $conn->query("SHOW TABLES LIKE 'menu'");
+                if ($checkMenu && $checkMenu->num_rows > 0) {
+                    $syncStmt = $conn->prepare(
+                        "UPDATE `menu` SET nama_barang = ?, nama_menu = ?, kategori = ?, merek = ?, satuan = ?, harga_beli = ?, harga = ?, jumlah = ?, stok = ?, stok_minimum = ?, tanggal_kedaluwarsa = ?, deskripsi = ? WHERE id = ?"
+                    );
+                    if ($syncStmt) {
+                        $syncStmt->bind_param(
+                            'sssssiiiisssi',
+                            $nama, $nama, $kategori, $merekDb, $satuan,
+                            $hargaBeli, $hargaJual, $stok, $stok, $stokMinimum,
+                            $tanggalDb, $deskripsiDb, $id
+                        );
+                        $syncStmt->execute();
+                        $syncStmt->close();
+                    }
+                }
+            }
+
+            // Session flash message untuk notifikasi sukses di index.php
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+            $_SESSION['flash'] = [
+                'type'    => 'success',
+                'title'   => 'Berhasil Diperbarui!',
+                'message' => 'Data barang "' . $nama . '" berhasil diperbarui di inventaris apotek.'
+            ];
+
             header('Location: index.php?status=edit_success');
             exit();
         } catch (Throwable $exception) {
             error_log($exception->getMessage());
-            $error = 'Produk gagal diperbarui. Pastikan struktur tabel menu sudah siap dan data yang dimasukkan valid.';
+            $error = 'Produk gagal diperbarui. Pastikan struktur tabel sudah siap dan data yang dimasukkan valid.';
         }
     }
 }
