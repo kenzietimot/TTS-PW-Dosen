@@ -18,6 +18,7 @@ if ($id) {
     $targetTbl = $tableBarang ?? 'barang';
     $getStmt = $conn->prepare("SELECT COALESCE(NULLIF(nama_barang, ''), nama_menu, 'Barang') FROM `{$targetTbl}` WHERE id = ?");
     if ($getStmt) {
+        $foundName = null;
         $getStmt->bind_param("i", $id);
         $getStmt->execute();
         $getStmt->bind_result($foundName);
